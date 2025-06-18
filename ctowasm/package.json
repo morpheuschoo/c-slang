@@ -63,7 +63,8 @@
     "gen-preprocessor": "peggy ./src/parser/peggyjs/preprocessor.pegjs --cache --allowed-start-rules program",
     "gen-lexer": "peggy ./src/parser/peggyjs/lexer.pegjs --cache --allowed-start-rules program",
     "gen-parser": "peggy ./src/parser/peggyjs/parser.pegjs --cache --allowed-start-rules program",
-    "gen-parsers": "yarn gen-preprocessor && yarn gen-lexer && yarn gen-parser"
+    "gen-parsers": "yarn gen-preprocessor && yarn gen-lexer && yarn gen-parser",
+    "interpret": "yarn build && node cmd-interpreter.js"
   },
   "dependencies": {
     "bignumber.js": "^9.1.2",

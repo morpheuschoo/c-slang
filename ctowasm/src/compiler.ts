@@ -13,6 +13,7 @@ import {
   toJson,
 } from "~src/errors";
 import ModuleRepository, { ModuleName } from "~src/modules";
+import interpret from "~src/interpreter/index";
 
 export interface SuccessfulCompilationResult {
   status: "success";
@@ -169,4 +170,17 @@ export function generate_WAT_AST(
   //checkForErrors(cSourceCode, CAst, Object.keys(wasmModuleImports)); // use semantic analyzer to check for semantic errors
   const wasmAst = translate(astRootNode, moduleRepository);
   return toJson(wasmAst);
+}
+
+export function interpret_C_AST(
+  cSourceCode: string,
+  moduleRepository: ModuleRepository,
+) {
+  const { cAstRoot } = parse(cSourceCode, moduleRepository);
+  const { astRootNode } = process(cAstRoot, moduleRepository);
+  console.log("=== AST ===")
+  console.log(astRootNode);
+  console.log();
+
+  const interpreted = interpret(astRootNode);
 }

@@ -8,6 +8,7 @@ import {
   generate_C_AST as original_generate_C_AST,
   generate_WAT_AST as originalGenerate_WAT_AST,
   generate_processed_C_AST as original_generate_processed_C_AST,
+  interpret_C_AST as original_interpter_C_AST,
   WatCompilationResult,
   CompilationResult,
 } from "./compiler";
@@ -22,6 +23,10 @@ export function compileToWat(program: string): WatCompilationResult {
 
 export function generate_WAT_AST(program: string) {
   return originalGenerate_WAT_AST(program, defaultModuleRepository);
+}
+
+export function interpret_C_AST(program: string) {
+  return original_interpter_C_AST(program, defaultModuleRepository);
 }
 
 export async function compile(program: string): Promise<CompilationResult> {
