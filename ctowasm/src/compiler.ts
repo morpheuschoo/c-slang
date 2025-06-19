@@ -13,7 +13,7 @@ import {
   toJson,
 } from "~src/errors";
 import ModuleRepository, { ModuleName } from "~src/modules";
-import interpret from "~src/interpreter/index";
+import interpret from "~src/interpreter/interpret";
 
 export interface SuccessfulCompilationResult {
   status: "success";
@@ -178,9 +178,5 @@ export function interpret_C_AST(
 ) {
   const { cAstRoot } = parse(cSourceCode, moduleRepository);
   const { astRootNode } = process(cAstRoot, moduleRepository);
-  console.log("=== AST ===")
-  console.log(astRootNode);
-  console.log();
-
-  const interpreted = interpret(astRootNode);
+  interpret(astRootNode);
 }
