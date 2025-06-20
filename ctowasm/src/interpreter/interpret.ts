@@ -7,29 +7,29 @@ export default function interpret(astRootNode: CAstRootP) {
   console.log(toJson(astRootNode));
   console.log();
 
-  const runtime = new Runtime(astRootNode.functions);
+  // const runtime = new Runtime(astRootNode.functions);
   
-  console.log("=== INITIAL STATE ===");
-  runtime.printState();
+  // console.log("=== INITIAL STATE ===");
+  // runtime.printState();
   
-  console.log("\n=== EXECUTION ===");
+  // console.log("\n=== EXECUTION ===");
 
-  let stepCount = 0;
-  while (true) {
-    stepCount++;
-    console.log(`\n>>> STEP ${stepCount} <<<`);
+  // let stepCount = 0;
+  // while (true) {
+  //   stepCount++;
+  //   console.log(`\n>>> STEP ${stepCount} <<<`);
     
-    if (!runtime.next()) {
-      console.log("\nExecution completed - no more items in control stack");
-      break;
-    }
-  }
+  //   if (!runtime.next()) {
+  //     console.log("\nExecution completed - no more items in control stack");
+  //     break;
+  //   }
+  // }
 
-  console.log(`\n=== EXECUTION COMPLETE (${stepCount} steps) ===`);
+  // console.log(`\n=== EXECUTION COMPLETE (${stepCount} steps) ===`);
 
-  // Get and return the final result
-  const result = runtime.getResult();
-  console.log(`Final result: ${result}`);
+  // // Get and return the final result
+  // const result = runtime.getResult();
+  // console.log(`Final result: ${result}`);
   
-  return result;
+  // return result;
 }

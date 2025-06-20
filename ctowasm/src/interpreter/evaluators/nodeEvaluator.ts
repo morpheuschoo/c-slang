@@ -1,6 +1,6 @@
-import { Runtime } from "./runtime";
-import { InstructionType, BinaryOpInstruction, Instruction, UnaryOpInstruction } from "./controlItems/instructions";
-import { CNodeType } from "./controlItems/types";
+import { Runtime } from "~src/interpreter/runtime";
+import { InstructionType } from "~src/interpreter/controlItems/instructions";
+import { CNodeType } from "~src/interpreter/controlItems/types";
 import { CNodeP } from "~src/processor/c-ast/core";
 import { FloatConstantP, IntegerConstantP } from "~src/processor/c-ast/expression/constants";
 import { BinaryExpressionP, UnaryExpressionP } from "~src/processor/c-ast/expression/expressions";
@@ -8,9 +8,6 @@ import { MemoryStore } from "~src/processor/c-ast/memory";
 import { FunctionDefinitionP } from "~src/processor/c-ast/function";
 import { ReturnStatementP } from "~src/processor/c-ast/statement/jumpStatement";
 
-/**
- * A collection of functions that evaluate different node types
- */
 export const NodeEvaluator: { 
   [Type in CNodeType]?: (
     runtime: Runtime, 
@@ -77,58 +74,5 @@ export const NodeEvaluator: {
   
     runtime.pushNode(node.rightExpr);
     runtime.pushNode(node.leftExpr);
-  }
-};
-
-export const InstructionEvaluator: {
-  [InstrType in Instruction["type"]]: (
-    runtime: Runtime, 
-    instruction: Extract<Instruction, { type: InstrType }>) => void
-} = {
-  [InstructionType.UNARY_OP]: (runtime: Runtime, instruction: UnaryOpInstruction): void => {
-    const operand = runtime.popValue();
-    let result;
-    
-    switch (instruction.operator) {
-      case '-': result = -operand; break;
-      case '!': result = !operand ? 1 : 0; break; 
-      case '~': result = ~operand; break;
-      case '+': result = +operand; break; // Unary plus
-      case '++': result = operand + 1; break; // Pre-increment
-      case '--': result = operand - 1; break; // Pre-decrement
-      case '&': result = operand; /* Address-of operator, simplified */ break;
-      case '*': result = operand; /* Dereference operator, simplified */ break;
-      default:
-        console.warn(`Unknown unary operator: ${instruction.operator}`);
-        result = null;
-    }
-
-    console.log(`Evaluated unary ${instruction.operator} operation: ${instruction.operator}${operand} = ${result}`);
-    runtime.pushValue(result);
-  },
-  [InstructionType.BINARY_OP]: (runtime: Runtime, instruction: BinaryOpInstruction): void => {
-    const right = runtime.popValue();
-    const left = runtime.popValue();
-    let result;
-    
-    switch (instruction.operator) {
-      case '+': result = left + right; break;
-      case '-': result = left - right; break;
-      case '*': result = left * right; break;
-      case '/': result = left / right; break;
-      case '%': result = left % right; break;
-      case '<': result = left < right ? 1 : 0; break;
-      case '>': result = left > right ? 1 : 0; break;
-      case '<=': result = left <= right ? 1 : 0; break;
-      case '>=': result = left >= right ? 1 : 0; break;
-      case '==': result = left === right ? 1 : 0; break;
-      case '!=': result = left !== right ? 1 : 0; break;
-      default: 
-        console.warn(`Unknown binary operator: ${instruction.operator}`);
-        result = null;
-    }
-
-    console.log(`Evaluated ${instruction.operator} operation: ${left} ${instruction.operator} ${right} = ${result}`);
-    runtime.pushValue(result);
   }
 };

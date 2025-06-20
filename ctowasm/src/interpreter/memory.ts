@@ -73,6 +73,7 @@ export class Memory {
     const matches = dataSegmentByteStr.match(/\\([0-9a-fA-F]{2})/g);
 
     if (!matches) {
+      
       return new Uint8Array(0);
     }
 

@@ -1,68 +1,104 @@
-import { Stack } from "./stack";
+import { Control } from "./utils/control";
+import { Stash } from "./utils/stash";
 import { CNodeP } from "~src/processor/c-ast/core";
 import { 
   Instruction, 
   InstructionType, 
-  isInstruction } from "./instructions";
+  isInstruction } from "./controlItems/instructions";
 import { NodeEvaluator, InstructionEvaluator } from "./evaluator";
 import { FunctionDefinitionP } from "~src/processor/c-ast/function";
 
-export class Runtime {
-  private control: Stack<CNodeP | Instruction>;
-  private stash: Stack<any>;
-  private functions: Map<string, FunctionDefinitionP>;
 
-  constructor(program: CNodeP[]) {
-    this.control = new Stack<CNodeP | Instruction>();
-    this.stash = new Stack<any>();
-    this.functions = new Map<string, FunctionDefinitionP>();
+export class Runtime {
+  private readonly control: Control;
+  private readonly stash: Stash;
+  
+  // To be removed and use FunctionTable provided in CAstRootP
+  private readonly functions: ReadonlyMap<string, FunctionDefinitionP>;
+
+  // To be impoved
+  private readonly isCompleted: boolean;
+
+  constructor(
+    program: ReadonlyArray<CNodeP>, 
+    control?: Control,
+    stash?: Stash,
+    functions?: ReadonlyMap<string, FunctionDefinitionP>,
+    isCompleted: boolean = false
+  ) {
+    this.stash = stash || new Stash();
+    this.functions = functions || new Map<string, FunctionDefinitionP>();
+    this.isCompleted = isCompleted;
     
-    for (let i = program.length - 1; i >= 0; i--) {
-      this.control.push(program[i]);
+    if (!control && program.length > 0) {
+      let newControl = new Control();
+      for (let i = program.length - 1; i >= 0; i--) {
+        newControl = newControl.push(program[i]);
+      }
+      this.control = newControl;
+    } else {
+      this.control = control || new Control();
     }
   }
   
-  next(): boolean {
-    if (this.control.isEmpty()) {
-      return false;
+  next(): Runtime {
+    if (this.isCompleted || this.control.isEmpty()) {
+      return new Runtime([], this.control, this.stash, this.functions, true);
     }
     
-    const item = this.control.pop();
+    const [item, newControl] = this.control.pop();
     
     if (!item) {
-      return false;
+      return new Runtime([], newControl, this.stash, this.functions, true);
     }
     
     if (isInstruction(item)) {
-      this.evaluateInstruction(item as Instruction);
+      return this.evaluateInstruction(item as Instruction, newControl);
     } else {
-      this.evaluateNode(item as CNodeP);
+      return this.evaluateNode(item as CNodeP, newControl);
     }
-    
-    this.printState();
-    
-    return !this.control.isEmpty();
   }
   
-  private evaluateNode(node: CNodeP): void {
+  private evaluateNode(node: CNodeP, newControl: Control): Runtime {
     console.log(`\n=== Evaluating node: ${node.type} ===`);
     
     const evaluator = NodeEvaluator[node.type];
     if (evaluator) {
-      evaluator(this, node as any);
+      const result = evaluator(this, node as any);
+      console.log(result.toString());
+      return result;
     } else {
       console.warn(`No evaluator found for node type: ${node.type}`);
-      this.pushValue(null);
+      const newRuntime = new Runtime(
+        [],
+        newControl,
+        this.stash.push(null), 
+        this.functions, 
+        newControl.isEmpty()
+      );
+      console.log(newRuntime.toString());
+      return newRuntime;
     }
   }
 
-  private evaluateInstruction(instruction: Instruction): void {
+  private evaluateInstruction(instruction: Instruction, newControl: Control): Runtime {
     console.log(`\n=== Executing instruction: ${instruction.type} ===`);
     
     if (InstructionEvaluator[instruction.type]) {
-      InstructionEvaluator[instruction.type](this, instruction as any);
+      const result = InstructionEvaluator[instruction.type](this, instruction as any);
+      console.log(result.toString());
+      return result;
     } else {
       console.warn(`Unknown instruction type: ${instruction.type}`);
+      const newRuntime = new Runtime(
+        [],
+        newControl,
+        this.stash, 
+        this.functions, 
+        newControl.isEmpty()
+      );
+      console.log(newRuntime.toString());
+      return newRuntime;
     }
   }
   
@@ -96,86 +132,28 @@ export class Runtime {
   getResult(): any {
     return this.stash.isEmpty() ? null : this.stash.peek();
   }
-  
-  printState(): void {
-    console.log("\n----- INTERPRETER STATE -----");
+
+  toString(): string {
+    let result = "\n----- INTERPRETER STATE -----\n";
     
-    console.log("\nCONTROL:");
-    if (this.control.isEmpty()) {
-      console.log("  <empty>");
-    } else {
-      const controlItems = this.control.getStack();
-      for (let i = controlItems.length - 1; i >= 0; i--) {
-        const item = controlItems[i];
-        if (isInstruction(item)) {
-          if (item.type === InstructionType.BINARY_OP) {
-            console.log(`  ${controlItems.length - i}. [Instruction] ${item.type}: '${(item as any).operator}'`);
-          } else if (item.type === InstructionType.UNARY_OP) {
-            console.log(`  ${controlItems.length - i}. [Instruction] ${item.type}: '${(item as any).operator}'`);
-          }
-        } else {
-          const nodeItem = item as any;
-          let additionalInfo = '';
-          switch (nodeItem.type) {
-            case 'FunctionDefinition':
-              additionalInfo = nodeItem.name ? `: ${nodeItem.name}` : '';
-              break;
-            case 'IntegerConstant':
-            case 'FloatConstant':
-              additionalInfo = nodeItem.value !== undefined ? `: ${nodeItem.value}` : '';
-              break;
-            case 'BinaryExpression':
-              additionalInfo = nodeItem.operator ? `: '${nodeItem.operator}'` : '';
-              break;
-          }
-          console.log(`  ${controlItems.length - i}. [Node] ${nodeItem.type}${additionalInfo}`);
-        }
-      }
-    }
+    result += "\nCONTROL:\n";
+    result += this.control.toString();
     
-    console.log("\nSTASH:");
-    if (this.stash.isEmpty()) {
-      console.log("  <empty>");
-    } else {
-      const stashItems = this.stash.getStack();
-      for (let i = stashItems.length - 1; i >= 0; i--) {
-        const item = stashItems[i];
-        console.log(`  ${stashItems.length - i}. ${formatStashItem(item)}`);
-      }
-    }
+    result += "\n\nSTASH:\n";
+    result += this.stash.toString();
     
-    console.log("\nREGISTERED FUNCTIONS:");
+    result += "\n\nREGISTERED FUNCTIONS:\n";
     if (this.functions.size === 0) {
-      console.log("  <none>");
+      result += "  <none>";
     } else {
       for (const [name, _] of this.functions) {
-        console.log(`  ${name}`);
+        result += `  ${name}\n`;
       }
     }
     
-    console.log("\n-----------------------------");
+    result += "\n-----------------------------";
+    return result;
   }
 }
 
-function formatStashItem(item: any): string {
-  if (item === null) return "null";
-  if (item === undefined) return "undefined";
-  
-  if (typeof item === "number" || typeof item === "boolean") {
-    return item.toString();
-  }
-  
-  if (typeof item === "string") {
-    return `"${item}"`;
-  }
-  
-  if (Array.isArray(item)) {
-    return `Array(${item.length})`;
-  }
-  
-  if (typeof item === "object") {
-    return `Object: ${JSON.stringify(item).substring(0, 50)}${JSON.stringify(item).length > 50 ? '...' : ''}`;
-  }
-  
-  return String(item);
 }
