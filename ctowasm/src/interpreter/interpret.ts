@@ -1,35 +1,46 @@
 import { CAstRootP } from "~src/processor/c-ast/core";
-import { toJson } from "~src/errors";
-import { Runtime } from "./runtime";
+import { Runtime } from "~src/interpreter/runtime";
 
-export default function interpret(astRootNode: CAstRootP) {
-  console.log("=== AST ===");
-  console.log(toJson(astRootNode));
-  console.log();
+export class Interpreter {
+  private readonly runtimeStack: Runtime[];
+  private readonly astRootNode: CAstRootP;
 
-  // const runtime = new Runtime(astRootNode.functions);
-  
-  // console.log("=== INITIAL STATE ===");
-  // runtime.printState();
-  
-  // console.log("\n=== EXECUTION ===");
+  constructor(
+    astRootNode: CAstRootP
+  ) {
+    this.astRootNode = astRootNode;
+    this.runtimeStack = [];
+  }
 
-  // let stepCount = 0;
-  // while (true) {
-  //   stepCount++;
-  //   console.log(`\n>>> STEP ${stepCount} <<<`);
+  interpret(): void {
+    const initialRuntime = new Runtime(this.astRootNode.functions);
+    this.runtimeStack.push(initialRuntime);
     
-  //   if (!runtime.next()) {
-  //     console.log("\nExecution completed - no more items in control stack");
-  //     break;
-  //   }
-  // }
+    let currentRuntime = initialRuntime;
+    let stepCount = 0;
+    
+    while (!currentRuntime.hasCompleted()) {
+      stepCount++;
+      
+      currentRuntime = currentRuntime.next();
 
-  // console.log(`\n=== EXECUTION COMPLETE (${stepCount} steps) ===`);
+      this.runtimeStack.push(currentRuntime);
+    }
+  }
 
-  // // Get and return the final result
-  // const result = runtime.getResult();
-  // console.log(`Final result: ${result}`);
-  
-  // return result;
+  toString(): string {
+    if (this.runtimeStack.length === 0) {
+      return "Runtime Stack: <empty>";
+    }
+    
+    let result = `Runtime Stack: ${this.runtimeStack.length} states\n`;
+    
+    for (let i = 0; i < this.runtimeStack.length; i++) {
+      result += `\n====== State ${i + 1} ======\n`;
+      result += this.runtimeStack[i].toString();
+      result += "\n";
+    }
+    
+    return result;
+  }
 }

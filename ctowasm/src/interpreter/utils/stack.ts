@@ -3,7 +3,7 @@
  * Adapted from https://github.com/source-academy/js-slang/blob/master/src/cse-machine/stack.ts
  * and made to be immutable
  */
-export interface ImmutableStack<T, S extends ImmutableStack<T, S> = ImmutableStack<T, any>> {
+export interface ImmutableStack<T, S> {
   push(item: T): S;
   pop(): [T | undefined, S];
   peek(): T | undefined;
@@ -12,23 +12,27 @@ export interface ImmutableStack<T, S extends ImmutableStack<T, S> = ImmutableSta
   toArray(): ReadonlyArray<T>;
 }
 
-export class Stack<T> implements ImmutableStack<T, Stack<T>> {
-  private readonly items: ReadonlyArray<T>;
+export class Stack<T, R = any> implements ImmutableStack<T, R> {
+  protected readonly items: ReadonlyArray<T>;
 
   constructor(items: ReadonlyArray<T> = []) {
     this.items = items;
   }
 
-  push(item: T): Stack<T> {
-    return new Stack<T>([...this.items, item]);
+  protected createNew(items: ReadonlyArray<T>): R {
+    return new Stack<T>(items) as unknown as R;
   }
 
-  pop(): [T | undefined, Stack<T>] {
+  push(item: T): R {
+    return this.createNew([...this.items, item]);
+  }
+
+  pop(): [T | undefined, R] {
     if (this.isEmpty()) {
-      return [undefined, this];
+      return [undefined, this as unknown as R];
     }
     const lastItem = this.items[this.items.length - 1];
-    return [lastItem, new Stack<T>(this.items.slice(0, -1))];
+    return [lastItem, this.createNew(this.items.slice(0, -1))];
   }
 
   peek(): T | undefined {

@@ -1,11 +1,9 @@
-import { Control } from "./utils/control";
-import { Stash } from "./utils/stash";
+import { Control } from "~src/interpreter/utils/control";
+import { Stash } from "~src/interpreter/utils/stash";
 import { CNodeP } from "~src/processor/c-ast/core";
-import { 
-  Instruction, 
-  InstructionType, 
-  isInstruction } from "./controlItems/instructions";
-import { NodeEvaluator, InstructionEvaluator } from "./evaluator";
+import { Instruction, isInstruction } from "~src/interpreter/controlItems/instructions";
+import { NodeEvaluator } from "~src/interpreter/evaluators/nodeEvaluator";
+import { InstructionEvaluator } from "~src/interpreter/evaluators/instructionEvaluator";
 import { FunctionDefinitionP } from "~src/processor/c-ast/function";
 
 
@@ -46,89 +44,138 @@ export class Runtime {
       return new Runtime([], this.control, this.stash, this.functions, true);
     }
     
+    // maybe should fix this???
     const [item, newControl] = this.control.pop();
-    
-    if (!item) {
-      return new Runtime([], newControl, this.stash, this.functions, true);
+    if (item === undefined) {
+      return new Runtime(
+        [],
+        newControl,
+        this.stash,
+        this.functions,
+        newControl.isEmpty()
+      );
     }
-    
+
+    const thisWithPoppedControl = new Runtime(
+      [],
+      newControl,
+      this.stash,
+      this.functions,
+      newControl.isEmpty()
+    );
+
     if (isInstruction(item)) {
-      return this.evaluateInstruction(item as Instruction, newControl);
+      return thisWithPoppedControl.evaluateInstruction(item as Instruction);
     } else {
-      return this.evaluateNode(item as CNodeP, newControl);
+      return thisWithPoppedControl.evaluateNode(item as CNodeP);
     }
   }
   
-  private evaluateNode(node: CNodeP, newControl: Control): Runtime {
-    console.log(`\n=== Evaluating node: ${node.type} ===`);
-    
+  private evaluateNode(node: CNodeP): Runtime {
     const evaluator = NodeEvaluator[node.type];
     if (evaluator) {
       const result = evaluator(this, node as any);
-      console.log(result.toString());
       return result;
     } else {
-      console.warn(`No evaluator found for node type: ${node.type}`);
+
+      // should not even come here
       const newRuntime = new Runtime(
         [],
-        newControl,
+        this.control,
         this.stash.push(null), 
         this.functions, 
-        newControl.isEmpty()
+        this.isCompleted
       );
-      console.log(newRuntime.toString());
       return newRuntime;
     }
   }
 
-  private evaluateInstruction(instruction: Instruction, newControl: Control): Runtime {
-    console.log(`\n=== Executing instruction: ${instruction.type} ===`);
-    
+  private evaluateInstruction(instruction: Instruction): Runtime {
     if (InstructionEvaluator[instruction.type]) {
       const result = InstructionEvaluator[instruction.type](this, instruction as any);
-      console.log(result.toString());
       return result;
     } else {
-      console.warn(`Unknown instruction type: ${instruction.type}`);
+
+      // should not even come here
       const newRuntime = new Runtime(
         [],
-        newControl,
+        this.control,
         this.stash, 
         this.functions, 
-        newControl.isEmpty()
+        this.isCompleted
       );
-      console.log(newRuntime.toString());
       return newRuntime;
     }
   }
   
-  addFunction(name: string, def: FunctionDefinitionP): void {
-    this.functions.set(name, def);
-    console.log(`Registered function: ${name}`);
+  // TODO
+  addFunction(name: string, def: FunctionDefinitionP): Runtime {
+    const newFunctions = new Map(this.functions);
+    newFunctions.set(name, def);
+    return new Runtime(
+      [],
+      this.control,
+      this.stash,
+      newFunctions,
+      this.isCompleted
+    );
   }
   
+  // TODO
   getFunction(name: string): FunctionDefinitionP | undefined {
     return this.functions.get(name);
   }
   
-  pushNode(node: CNodeP): void {
-    if (node) {
-      this.control.push(node);
-    }
+  pushNode(node: CNodeP): Runtime {
+    if (!node) return this;
+    
+    return new Runtime(
+      [],
+      this.control.push(node),
+      this.stash,
+      this.functions,
+      false
+    );
   }
   
-  pushInstruction(instruction: Instruction): void {
-    this.control.push(instruction);
+  pushInstruction(instruction: Instruction): Runtime {
+    return new Runtime(
+      [],
+      this.control.push(instruction),
+      this.stash,
+      this.functions,
+      false
+    );
   }
   
-  pushValue(value: any): void {
-    this.stash.push(value);
+  pushValue(value: any): Runtime {
+    return new Runtime(
+      [],
+      this.control,
+      this.stash.push(value),
+      this.functions,
+      this.isCompleted
+    );
   }
   
-  popValue(): any {
-    return this.stash.pop();
+  popValue(): [any, Runtime] {
+    const [value, newStash] = this.stash.pop();
+    return [
+      value, 
+      new Runtime(
+        [],
+        this.control,
+        newStash,
+        this.functions,
+        this.isCompleted
+      )
+    ];
   }
   
+  hasCompleted(): boolean {
+    return this.isCompleted || this.control.isEmpty();
+  }
+
   getResult(): any {
     return this.stash.isEmpty() ? null : this.stash.peek();
   }
@@ -154,6 +201,4 @@ export class Runtime {
     result += "\n-----------------------------";
     return result;
   }
-}
-
 }

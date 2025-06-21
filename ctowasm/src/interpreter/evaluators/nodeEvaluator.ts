@@ -11,68 +11,57 @@ import { ReturnStatementP } from "~src/processor/c-ast/statement/jumpStatement";
 export const NodeEvaluator: { 
   [Type in CNodeType]?: (
     runtime: Runtime, 
-    node: Extract<CNodeP, { type: Type }>) => void 
+    node: Extract<CNodeP, { type: Type }>) => Runtime 
 } = {
-  "ReturnStatement": (runtime: Runtime, node: ReturnStatementP): void => {
-    console.log(`Evaluating ReturnStatement`);
-    console.warn("ReturnStatement evaluation not yet implemented");
+  // TODO
+  "ReturnStatement": (runtime: Runtime, node: ReturnStatementP): Runtime => {
+    return runtime;
   },
 
-  "MemoryStore": (runtime: Runtime, node: MemoryStore): void => {
-    console.log(`Evaluating MemoryStore`);
-    
-    // Evaluate address and value expressions
-    runtime.pushNode(node.value);
-    
-    // Placeholder for memory store operation
-    console.warn("MemoryStore evaluation not yet implemented");
+  // TODO
+  "MemoryStore": (runtime: Runtime, node: MemoryStore): Runtime => {
+    const newRuntime = runtime.pushNode(node.value);
+    return newRuntime;
   },
 
-  "FunctionDefinition": (runtime: Runtime, node: FunctionDefinitionP): void => {
-    console.log(`Evaluating FunctionDefinition: ${node.name}`);
-    runtime.addFunction(node.name, node);
+  "FunctionDefinition": (runtime: Runtime, node: FunctionDefinitionP): Runtime => {
+    let newRuntime = runtime.addFunction(node.name, node);
 
     if (node.name === "main") {
-      console.log("Found main function, queueing body for execution");
-      
       if (node.body && node.body.length > 0) {
         for (let i = node.body.length - 1; i >= 0; i--) {
-          runtime.pushNode(node.body[i]);
+          newRuntime = newRuntime.pushNode(node.body[i]);
         }
       }
     }
-  },
-
-  "IntegerConstant": (runtime: Runtime, node: IntegerConstantP): void => {
-    console.log(`Evaluating IntegerConstant: ${node.value}`);
-    runtime.pushValue(node.value);
-  },
-
-  "FloatConstant": (runtime: Runtime, node: FloatConstantP): void => {
-    console.log(`Evaluating FloatConstant: ${node.value}`);
-    runtime.pushValue(node.value);
-  },
-
-  "UnaryExpression": (runtime: Runtime, node: UnaryExpressionP): void => {
-    console.log(`Evaluating UnaryExpression with operator: ${node.operator}`);
     
-    runtime.pushInstruction({
+    return newRuntime;
+  },
+
+  "IntegerConstant": (runtime: Runtime, node: IntegerConstantP): Runtime => {
+    return runtime.pushValue(node.value);
+  },
+
+  "FloatConstant": (runtime: Runtime, node: FloatConstantP): Runtime => {
+    return runtime.pushValue(node.value);
+  },
+
+  "UnaryExpression": (runtime: Runtime, node: UnaryExpressionP): Runtime => {
+    const runtimeWithInstruction = runtime.pushInstruction({
       type: InstructionType.UNARY_OP,
       operator: node.operator
     });
     
-    runtime.pushNode(node.expr);
+    return runtimeWithInstruction.pushNode(node.expr);
   },
 
-  "BinaryExpression": (runtime: Runtime, node: BinaryExpressionP): void => {
-    console.log(`Evaluating BinaryExpression with operator: ${node.operator}`);
-    
-    runtime.pushInstruction({
+  "BinaryExpression": (runtime: Runtime, node: BinaryExpressionP): Runtime => {    
+    const runtimeWithInstruction = runtime.pushInstruction({
       type: InstructionType.BINARY_OP,
       operator: node.operator
     });
   
-    runtime.pushNode(node.rightExpr);
-    runtime.pushNode(node.leftExpr);
+    const runtimeWithRight = runtimeWithInstruction.pushNode(node.rightExpr);
+    return runtimeWithRight.pushNode(node.leftExpr);
   }
 };

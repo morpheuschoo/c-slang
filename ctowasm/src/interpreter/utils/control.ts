@@ -1,40 +1,12 @@
 import { CNodeP } from "~src/processor/c-ast/core";
-import { ImmutableStack, Stack } from "./stack";
+import { Stack } from "./stack";
 import { Instruction, InstructionType, isInstruction } from "~src/interpreter/controlItems/instructions";
 
 export type ControlItem = CNodeP | Instruction;
 
-export class Control implements ImmutableStack<ControlItem, Control> {
-  private readonly stack: Stack<ControlItem>;
-
-  constructor(items: ReadonlyArray<ControlItem> = []) {
-    this.stack = new Stack<ControlItem>(items);
-  }
-
-  push(item: ControlItem): Control {
-    const newStack = this.stack.push(item);
-    return new Control(newStack.toArray());
-  }
-
-  pop(): [ControlItem | undefined, Control] {
-    const [item, newStack] = this.stack.pop();
-    return [item, new Control(newStack.toArray())];
-  }
-
-  peek(): ControlItem | undefined {
-    return this.stack.peek();
-  }
-
-  size(): number {
-    return this.stack.size();
-  }
-
-  isEmpty(): boolean {
-    return this.stack.isEmpty();
-  }
-
-  toArray(): ReadonlyArray<ControlItem> {
-    return this.stack.toArray();
+export class Control extends Stack<ControlItem, Control> {
+  protected createNew(items: ReadonlyArray<ControlItem>): Control {
+    return new Control(items);
   }
 
   toString(): string {
@@ -73,7 +45,7 @@ export class Control implements ImmutableStack<ControlItem, Control> {
             additionalInfo = nodeItem.operator ? `: '${nodeItem.operator}'` : '';
             break;
         }
-        
+
         result += `  ${itemPosition}. [Node] ${nodeItem.type}${additionalInfo}\n`;
       }
     }

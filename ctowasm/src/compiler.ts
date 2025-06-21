@@ -13,7 +13,7 @@ import {
   toJson,
 } from "~src/errors";
 import ModuleRepository, { ModuleName } from "~src/modules";
-import interpret from "~src/interpreter/interpret";
+import { interpret } from "~src/interpreter/index";
 
 export interface SuccessfulCompilationResult {
   status: "success";
