@@ -7,6 +7,9 @@ import { InstructionEvaluator } from "~src/interpreter/evaluators/instructionEva
 import { FunctionDefinitionP } from "~src/processor/c-ast/function";
 import { FunctionTable } from "~src/processor/symbolTable";
 import { Memory } from "./memory";
+import { ScalarCDataType } from "~src/common/types";
+import { Address } from "~src/processor/c-ast/memory";
+import { ConstantP } from "~src/processor/c-ast/expression/constants";
 
 
 export class Runtime {
@@ -41,17 +44,6 @@ export class Runtime {
       return new Runtime(this.control, this.stash, this.memory);
     }
     
-    // // maybe should fix this???
-    // if (item === undefined) {
-      //   return new Runtime(
-        //     [],
-        //     newControl,
-        //     this.stash,
-        //     this.functions,
-        //     newControl.isEmpty()
-        //   );
-        // }
-        
     const [item, newControl] = this.control.pop();
     const poppedRuntime = new Runtime(
       newControl,
@@ -72,17 +64,6 @@ export class Runtime {
       const result = evaluator(this, node as any);
       return result;
     } else {
-
-      // should not even come here
-      // const newRuntime = new Runtime(
-      //   [],
-      //   this.control,
-      //   this.stash.push(null), 
-      //   this.functions, 
-      //   this.isCompleted
-      // );
-      // return newRuntime;
-    
       throw new Error("Unknown node type");
     }
   }
@@ -92,37 +73,33 @@ export class Runtime {
       const result = InstructionEvaluator[instruction.type](this, instruction as any);
       return result;
     } else {
-
-      // should not even come here
-      // const newRuntime = new Runtime(
-      //   [],
-      //   this.control,
-      //   this.stash, 
-      //   this.functions, 
-      //   this.isCompleted
-      // );
-      // return newRuntime;
-      
       throw new Error("Unknown instruction type");
     }
   }
   
   // TODO
-  // addFunction(name: string, def: FunctionDefinitionP): Runtime {
-  //   const newFunctions = new Map(this.functions);
-  //   newFunctions.set(name, def);
-  //   return new Runtime(
-  //     [],
-  //     this.control,
-  //     this.stash,
-  //     newFunctions,
-  //     this.isCompleted
-  //   );
-  // }
-  
-  // TODO
   getFunction(name: string): FunctionDefinitionP | undefined {
     return Runtime.astRootP.functions.find(x => x.name === name);
+  }
+
+  // MEMORY
+  memoryWrite(address: Address, value: ConstantP, datatype: ScalarCDataType) {
+    switch (address.type) {
+      case "LocalAddress":
+        
+    }
+
+    return new Runtime(this.control, this.stash, this.memory.write(address, value, datatype))
+  }
+
+
+  // function to push general instruction/CNodeP onto the control
+  push(item: (CNodeP | Instruction)[]): Runtime {
+    return new Runtime(
+      this.control.concat(item.reverse()),
+      this.stash,
+      this.memory,
+    );
   }
   
   pushNode(node: CNodeP[]): Runtime {
@@ -141,7 +118,7 @@ export class Runtime {
     );
   }
   
-  pushValue(value: any): Runtime {
+  pushValue(value: ConstantP): Runtime {
     return new Runtime(
       this.control,
       this.stash.push(value),

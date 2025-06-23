@@ -3,6 +3,9 @@ import { KB, WASM_PAGE_IN_HEX } from "~src/common/constants";
 import { calculateNumberOfPagesNeededForBytes } from "~src/common/utils";
 import { WASM_ADDR_TYPE } from "~src/translator/memoryUtil";
 import { SharedWasmGlobalVariables } from "~src/modules";
+import { Address } from "~src/processor/c-ast/memory";
+import { ScalarCDataType } from "~src/common/types";
+import { ConstantP } from "~src/processor/c-ast/expression/constants";
 
 export function parseDataSegmentByteStr(dataSegmentByteStr: string) : Uint8Array {
   const matches = dataSegmentByteStr.match(/\\([0-9a-fA-F]{2})/g)
@@ -44,6 +47,15 @@ export class Memory {
         heapPointer,
       )
     };
+  }
+
+  write(address: Address, value: ConstantP, datatype: ScalarCDataType) : Memory {
+    switch (address.type) {
+      case "LocalAddress":
+        
+    }
+  
+    return this;
   }
 
   // Constructor to initiate the first runtime object

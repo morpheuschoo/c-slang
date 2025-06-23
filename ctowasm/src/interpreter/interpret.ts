@@ -16,21 +16,23 @@ export class Interpreter {
 
   interpret(): void {
     Runtime.astRootP = this.astRootNode;
+    console.log("HERE");
+    console.log(this.astRootNode);
     const mainFunction = Runtime.astRootP.functions.find(x => x.name === "main");
 
-    if(!mainFunction) {
-      throw new Error("Main function not defined");
-    }
-    const initialRuntime = new Runtime(new Control(mainFunction.body.reverse()));
+    // if(!mainFunction) {
+    //   throw new Error("Main function not defined");
+    // }
+    // const initialRuntime = new Runtime(new Control(mainFunction.body.reverse()));
 
-    this.runtimeStack.push(initialRuntime);
+    // this.runtimeStack.push(initialRuntime);
     
-    let currentRuntime = initialRuntime;
+    // let currentRuntime = initialRuntime;
     
-    while (!currentRuntime.hasCompleted()) {  
-      currentRuntime = currentRuntime.next();
-      this.runtimeStack.push(currentRuntime);
-    }
+    // while (!currentRuntime.hasCompleted()) {  
+    //   currentRuntime = currentRuntime.next();
+    //   this.runtimeStack.push(currentRuntime);
+    // }
   }
 
   toString(): string {
