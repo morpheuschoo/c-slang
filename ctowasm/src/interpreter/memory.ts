@@ -8,8 +8,8 @@ import { ScalarCDataType } from "~src/common/types";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { convertConstantToByteStr } from "~src/processor/byteStrUtil";
 
-export function parseDataSegmentByteStr(dataSegmentByteStr: string) : Uint8Array {
-  const matches = dataSegmentByteStr.match(/\\([0-9a-fA-F]{2})/g)
+export function parseByteStr(byteStr: string) : Uint8Array {
+  const matches = byteStr.match(/\\([0-9a-fA-F]{2})/g)
   if(!matches) {
     return new Uint8Array;
   }
@@ -54,7 +54,20 @@ export class Memory {
     switch (address.type) {
       case "LocalAddress":
         const bytestr = convertConstantToByteStr(value, datatype);
-        const size = primaryDataTypeSizes[datatype]
+        // TODO: fix this
+        const byteArray = parseByteStr(bytestr);
+        const writeAddress = this.sharedWasmGlobalVariables.basePointer.value + address.offset;
+
+        if(writeAddress < 0 || writeAddress > this.memory.buffer.byteLength || writeAddress + byteArray.length > this.memory.buffer.byteLength) {
+          throw new Error("Memory out of bounds");
+        }
+        const newMemory = this.clone();
+        const newMemoryView = new Uint8Array(newMemory.memory.buffer);
+        for(let i = 0; i < byteArray.length; i++) {
+          newMemoryView[i + writeAddress] = byteArray[i];
+        }
+
+        return newMemory;
     }
   
     return this;
@@ -95,7 +108,7 @@ export class Memory {
     };
 
     // Initiate the data segment that stores global and static values
-    const dataSegmentByteArray = parseDataSegmentByteStr(dataSegmentByteStr)
+    const dataSegmentByteArray = parseByteStr(dataSegmentByteStr)
     const view = new Uint8Array(this.memory.buffer);
     for(let i = 0;i < dataSegmentByteArray.length;i++) {
       view[i] = dataSegmentByteArray[i];
