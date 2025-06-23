@@ -1,4 +1,4 @@
-import { Control } from "~src/interpreter/utils/control";
+import { ControlItem, Control } from "~src/interpreter/utils/control";
 import { Stash } from "~src/interpreter/utils/stash";
 import { CAstRootP, CNodeP } from "~src/processor/c-ast/core";
 import { Instruction, isInstruction } from "~src/interpreter/controlItems/instructions";
@@ -43,7 +43,7 @@ export class Runtime {
     if (this.hasCompleted()) {
       return new Runtime(this.control, this.stash, this.memory);
     }
-    
+
     const [item, newControl] = this.control.pop();
     const poppedRuntime = new Runtime(
       newControl,
@@ -92,9 +92,8 @@ export class Runtime {
     return new Runtime(this.control, this.stash, this.memory.write(address, value, datatype))
   }
 
-
   // function to push general instruction/CNodeP onto the control
-  push(item: (CNodeP | Instruction)[]): Runtime {
+  push(item: ControlItem[]): Runtime {
     return new Runtime(
       this.control.concat(item.reverse()),
       this.stash,

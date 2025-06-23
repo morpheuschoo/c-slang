@@ -63,7 +63,7 @@ export const InstructionEvaluator: {
   },
 
   [InstructionType.BRANCH]: (runtime: Runtime, instruction: branchOpInstruction): Runtime => {
-    const condition = runtime.popValue();
+    const [condition, runtimeWithPoppedValue] = runtime.popValue();
     const isTrue = Boolean(condition);
     
     if (isTrue) {
@@ -74,7 +74,6 @@ export const InstructionEvaluator: {
 
   [InstructionType.ASSIGNMENT]: (runtime: Runtime, instruction: AssignmentInstruction): Runtime => {
     const value = runtime.getResult();
-
     return runtime.push([]);
   },
 

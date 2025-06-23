@@ -95,7 +95,6 @@ export const NodeEvaluator: {
     return newRuntime;
   },
 
-  
   FunctionCall: (runtime: Runtime, node: FunctionCallP): Runtime => {
     return new Runtime();
   },
@@ -119,7 +118,6 @@ export const NodeEvaluator: {
 
   UnaryExpression: (runtime: Runtime, node: UnaryExpressionP): Runtime => {
     const runtimeWithInstruction = runtime.pushInstruction([unaryOpInstruction(node.operator)]);
-    
     return runtimeWithInstruction.pushNode([node.expr]);
   },
 
