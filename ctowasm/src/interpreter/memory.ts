@@ -1,11 +1,12 @@
 // A runtime class for the interpreter which encapsulates the memory 
 import { KB, WASM_PAGE_IN_HEX } from "~src/common/constants";
-import { calculateNumberOfPagesNeededForBytes } from "~src/common/utils";
+import { calculateNumberOfPagesNeededForBytes, primaryDataTypeSizes } from "~src/common/utils";
 import { WASM_ADDR_TYPE } from "~src/translator/memoryUtil";
 import { SharedWasmGlobalVariables } from "~src/modules";
 import { Address } from "~src/processor/c-ast/memory";
 import { ScalarCDataType } from "~src/common/types";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
+import { convertConstantToByteStr } from "~src/processor/byteStrUtil";
 
 export function parseDataSegmentByteStr(dataSegmentByteStr: string) : Uint8Array {
   const matches = dataSegmentByteStr.match(/\\([0-9a-fA-F]{2})/g)
@@ -52,7 +53,8 @@ export class Memory {
   write(address: Address, value: ConstantP, datatype: ScalarCDataType) : Memory {
     switch (address.type) {
       case "LocalAddress":
-        
+        const bytestr = convertConstantToByteStr(value, datatype);
+        const size = primaryDataTypeSizes[datatype]
     }
   
     return this;
