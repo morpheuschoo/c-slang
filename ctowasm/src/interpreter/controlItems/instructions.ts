@@ -1,4 +1,6 @@
+import { ScalarCDataType } from "~src/common/types";
 import { CNodeP } from "~src/processor/c-ast/core";
+import { Address } from "~src/processor/c-ast/memory";
 
 /**
  * Types of instructions for the interpreter
@@ -7,7 +9,8 @@ export enum InstructionType {
   BINARY_OP = "BINARY_OP",
   UNARY_OP = "UNARY_OP",
   BRANCH = "BRANCH",
-  POP = "POP"
+  POP = "POP",
+  ASSIGNMENT = "ASSIGNMENT"
 }
 
 export interface BaseInstruction {
@@ -54,11 +57,25 @@ export const popInstruction = (): popInstruction => ({
   type: InstructionType.POP,
 })
 
+// MEMORY
+export interface AssignmentInstruction extends BaseInstruction {
+  type: InstructionType.ASSIGNMENT;
+  address: Address;
+  dataType: ScalarCDataType;
+}
+
+export const assignmentInstruction = (address: Address, dataType: ScalarCDataType): AssignmentInstruction => ({
+  type: InstructionType.ASSIGNMENT,
+  address: address,
+  dataType: dataType,
+})
+
 export type Instruction = 
   | BinaryOpInstruction
   | UnaryOpInstruction
   | branchOpInstruction
-  | popInstruction;
+  | popInstruction
+  | AssignmentInstruction;
 
 export const isInstruction = (item: any): item is Instruction => {
   return item && typeof item === 'object' && 'type' in item && 

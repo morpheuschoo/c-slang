@@ -1,5 +1,12 @@
 import { Runtime } from "~src/interpreter/runtime";
-import { binaryOpInstruction, branchOpInstruction, InstructionType, popInstruction, unaryOpInstruction } from "~src/interpreter/controlItems/instructions";
+import { AssignmentInstruction, 
+  assignmentInstruction, 
+  binaryOpInstruction, 
+  branchOpInstruction, 
+  InstructionType, 
+  popInstruction, 
+  unaryOpInstruction 
+} from "~src/interpreter/controlItems/instructions";
 import { CNodeType } from "~src/interpreter/controlItems/types";
 import { CNodeP } from "~src/processor/c-ast/core";
 import { 
@@ -92,7 +99,11 @@ export const NodeEvaluator: {
 
   // TODO
   MemoryStore: (runtime: Runtime, node: MemoryStore): Runtime => {
-    const newRuntime = runtime.pushNode([node.value]);
+    const newRuntime = runtime.push([
+      node.value, 
+      assignmentInstruction(node.address, node.dataType),
+      popInstruction()
+    ]);
 
     return newRuntime;
   },
@@ -104,11 +115,11 @@ export const NodeEvaluator: {
  // ========== EXPRESSIONS ==========
 
   IntegerConstant: (runtime: Runtime, node: IntegerConstantP): Runtime => {
-    return runtime.pushValue(node.value);
+    return runtime.pushValue(node);
   },
 
   FloatConstant: (runtime: Runtime, node: FloatConstantP): Runtime => {
-    return runtime.pushValue(node.value);
+    return runtime.pushValue(node);
   },
 
   BinaryExpression: (runtime: Runtime, node: BinaryExpressionP): Runtime => {    
