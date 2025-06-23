@@ -14,7 +14,9 @@ export const InstructionEvaluator: {
       case '-': result = -operand; break;
       case '!': result = !operand ? 1 : 0; break; 
       case '~': result = ~operand; break;
-      case '+': result = +operand; break; // Unary plus
+      case '+': result = +operand; break;
+
+      // TODO
       case '++': result = operand + 1; break; // Pre-increment
       case '--': result = operand - 1; break; // Pre-decrement
       case '&': result = operand; /* Address-of operator, simplified */ break;

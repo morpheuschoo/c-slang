@@ -17,13 +17,9 @@ export class Interpreter {
     this.runtimeStack.push(initialRuntime);
     
     let currentRuntime = initialRuntime;
-    let stepCount = 0;
     
-    while (!currentRuntime.hasCompleted()) {
-      stepCount++;
-      
+    while (!currentRuntime.hasCompleted()) {  
       currentRuntime = currentRuntime.next();
-
       this.runtimeStack.push(currentRuntime);
     }
   }
