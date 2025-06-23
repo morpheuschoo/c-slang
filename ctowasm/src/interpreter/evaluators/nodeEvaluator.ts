@@ -86,7 +86,7 @@ export const NodeEvaluator: {
 
   // TODO
   MemoryStore: (runtime: Runtime, node: MemoryStore): Runtime => {
-    const newRuntime = runtime.pushNode(node.value);
+    const newRuntime = runtime.pushNode([node.value]);
 
     return newRuntime;
   },
