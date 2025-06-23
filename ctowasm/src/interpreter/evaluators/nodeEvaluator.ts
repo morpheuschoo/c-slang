@@ -1,5 +1,12 @@
 import { Runtime } from "~src/interpreter/runtime";
-import { AssignmentInstruction, assignmentInstruction, binaryOpInstruction, branchOpInstruction, InstructionType, popInstruction, unaryOpInstruction } from "~src/interpreter/controlItems/instructions";
+import { AssignmentInstruction, 
+  assignmentInstruction, 
+  binaryOpInstruction, 
+  branchOpInstruction, 
+  InstructionType, 
+  popInstruction, 
+  unaryOpInstruction 
+} from "~src/interpreter/controlItems/instructions";
 import { CNodeType } from "~src/interpreter/controlItems/types";
 import { CNodeP } from "~src/processor/c-ast/core";
 import { 
@@ -26,6 +33,7 @@ import {
   WhileLoopP,
   ForLoopP,
 } from "~src/processor/c-ast/statement/iterationStatement";
+import { ExpressionStatementP } from "~src/processor/c-ast/statement/expressionStatement";
 
 export const NodeEvaluator: { 
   [Type in CNodeType]?: (
@@ -39,6 +47,11 @@ export const NodeEvaluator: {
    */
 
   // ========== STATEMENTS ==========
+
+  ExpressionStatement: (runtime: Runtime, node: ExpressionStatementP): Runtime => {
+    const runtimeWithPop = runtime.pushInstruction([popInstruction()]);
+    return runtimeWithPop.pushNode([node.expr]);
+  },
 
   // TODO
   SelectionStatement: (runtime: Runtime, node: SelectionStatementP): Runtime => {
