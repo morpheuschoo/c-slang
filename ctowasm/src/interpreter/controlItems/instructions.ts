@@ -1,9 +1,13 @@
+import { CNodeP } from "~src/processor/c-ast/core";
+
 /**
  * Types of instructions for the interpreter
  */
 export enum InstructionType {
   BINARY_OP = "BINARY_OP",
-  UNARY_OP = "UNARY_OP"
+  UNARY_OP = "UNARY_OP",
+  BRANCH = "BRANCH",
+  POP = "POP"
 }
 
 export interface BaseInstruction {
@@ -30,9 +34,31 @@ export const unaryOpInstruction = (operator: string): UnaryOpInstruction => ({
   operator,
 });
 
+export interface branchOpInstruction extends BaseInstruction {
+  type: InstructionType.BRANCH;
+  trueExpr: CNodeP;
+  falseExpr: CNodeP;
+}
+
+export const branchOpInstruction = (trueExpr: CNodeP, falseExpr: CNodeP): branchOpInstruction => ({
+  type: InstructionType.BRANCH,
+  trueExpr,
+  falseExpr,
+});
+
+export interface popInstruction extends BaseInstruction {
+  type: InstructionType.POP;
+}
+
+export const popInstruction = (): popInstruction => ({
+  type: InstructionType.POP,
+})
+
 export type Instruction = 
   | BinaryOpInstruction
-  | UnaryOpInstruction;
+  | UnaryOpInstruction
+  | branchOpInstruction
+  | popInstruction;
 
 export const isInstruction = (item: any): item is Instruction => {
   return item && typeof item === 'object' && 'type' in item && 

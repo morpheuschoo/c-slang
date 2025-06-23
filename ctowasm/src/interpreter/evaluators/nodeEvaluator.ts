@@ -1,5 +1,5 @@
 import { Runtime } from "~src/interpreter/runtime";
-import { InstructionType } from "~src/interpreter/controlItems/instructions";
+import { binaryOpInstruction, branchOpInstruction, InstructionType, unaryOpInstruction } from "~src/interpreter/controlItems/instructions";
 import { CNodeType } from "~src/interpreter/controlItems/types";
 import { CNodeP } from "~src/processor/c-ast/core";
 import { 
@@ -32,6 +32,11 @@ export const NodeEvaluator: {
     runtime: Runtime, 
     node: Extract<CNodeP, { type: Type }>) => Runtime 
 } = {
+
+  /**
+   * TODO:
+   * 1. Creation of statements from expressions (i think this would be the best way)
+   */
 
   // ========== STATEMENTS ==========
 
@@ -114,20 +119,14 @@ export const NodeEvaluator: {
   },
 
   BinaryExpression: (runtime: Runtime, node: BinaryExpressionP): Runtime => {    
-    const runtimeWithInstruction = runtime.pushInstruction({
-      type: InstructionType.BINARY_OP,
-      operator: node.operator
-    });
-  
+    const runtimeWithInstruction = runtime.pushInstruction(binaryOpInstruction(node.operator));
     const runtimeWithRight = runtimeWithInstruction.pushNode(node.rightExpr);
+    
     return runtimeWithRight.pushNode(node.leftExpr);
   },
 
   UnaryExpression: (runtime: Runtime, node: UnaryExpressionP): Runtime => {
-    const runtimeWithInstruction = runtime.pushInstruction({
-      type: InstructionType.UNARY_OP,
-      operator: node.operator
-    });
+    const runtimeWithInstruction = runtime.pushInstruction(unaryOpInstruction(node.operator));
     
     return runtimeWithInstruction.pushNode(node.expr);
   },
@@ -142,8 +141,8 @@ export const NodeEvaluator: {
     return new Runtime([]);
   },
 
-  // TODO
   ConditionalExpression: (runtime: Runtime, node: ConditionalExpressionP): Runtime => {
-    return new Runtime([]);
+    const runtimeWithInstruction = runtime.pushInstruction(branchOpInstruction(node.trueExpression, node.falseExpression));
+    return runtimeWithInstruction.pushNode(node.condition);
   }
 };

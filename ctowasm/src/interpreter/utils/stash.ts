@@ -1,4 +1,4 @@
-import { ImmutableStack, Stack } from "./stack";
+import { Stack } from "./stack";
 
 // TO FIX: define the types
 export type StashItem = any;

@@ -1,5 +1,12 @@
 import { Runtime } from "~src/interpreter/runtime";
-import { InstructionType, BinaryOpInstruction, Instruction, UnaryOpInstruction } from "~src/interpreter/controlItems/instructions";
+import { 
+  Instruction, 
+  InstructionType, 
+  BinaryOpInstruction, 
+  UnaryOpInstruction, 
+  branchOpInstruction,
+  popInstruction,
+ } from "~src/interpreter/controlItems/instructions";
 
 export const InstructionEvaluator: {
   [InstrType in Instruction["type"]]: (
@@ -13,10 +20,10 @@ export const InstructionEvaluator: {
     switch (instruction.operator) {
       case '-': result = -operand; break;
       case '!': result = !operand ? 1 : 0; break; 
-      case '~': result = ~operand; break;
       case '+': result = +operand; break;
 
       // TODO
+      case '~': result = ~operand; break;
       case '++': result = operand + 1; break; // Pre-increment
       case '--': result = operand - 1; break; // Pre-decrement
       case '&': result = operand; /* Address-of operator, simplified */ break;
@@ -32,8 +39,8 @@ export const InstructionEvaluator: {
   [InstructionType.BINARY_OP]: (runtime: Runtime, instruction: BinaryOpInstruction): Runtime => {
     const [right, runtimeAfterPopRight] = runtime.popValue();
     const [left, runtimeAfterPopLeft] = runtimeAfterPopRight.popValue();
-    let result;
     
+    let result;
     switch (instruction.operator) {
       case '+': result = left + right; break;
       case '-': result = left - right; break;
@@ -52,5 +59,20 @@ export const InstructionEvaluator: {
     }
 
     return runtimeAfterPopLeft.pushValue(result);
+  },
+
+  [InstructionType.BRANCH]: (runtime: Runtime, instruction: branchOpInstruction): Runtime => {
+    const condition = runtime.popValue();
+    const isTrue = Boolean(condition);
+    
+    if (isTrue) {
+      return runtime.pushNode(instruction.trueExpr);
+    }
+    return runtime.pushNode(instruction.falseExpr);
+  },
+
+  [InstructionType.POP]: (runtime: Runtime, instruction: popInstruction): Runtime => {
+    const [value, runtimeAfterPop] = runtime.popValue();
+    return runtimeAfterPop;
   }
 };

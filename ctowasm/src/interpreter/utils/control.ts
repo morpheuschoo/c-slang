@@ -26,8 +26,8 @@ export class Control extends Stack<ControlItem, Control> {
           result += `  ${itemPosition}. [Instruction] ${item.type}: '${(item as any).operator}'\n`;
         } else if (item.type === InstructionType.UNARY_OP) {
           result += `  ${itemPosition}. [Instruction] ${item.type}: '${(item as any).operator}'\n`;
-        } else {
-          
+        } else if (item.type === InstructionType.BRANCH) {
+          result += `  ${itemPosition}. [Instruction] ${item.type}\n`;
         }
       } else {
         const nodeItem = item as any;
@@ -41,6 +41,7 @@ export class Control extends Stack<ControlItem, Control> {
           case 'FloatConstant':
             additionalInfo = nodeItem.value !== undefined ? `: ${nodeItem.value}` : '';
             break;
+          case 'UnaryExpression':
           case 'BinaryExpression':
             additionalInfo = nodeItem.operator ? `: '${nodeItem.operator}'` : '';
             break;
