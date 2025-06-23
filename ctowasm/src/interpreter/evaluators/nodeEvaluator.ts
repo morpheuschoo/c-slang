@@ -42,24 +42,24 @@ export const NodeEvaluator: {
 
   // TODO
   SelectionStatement: (runtime: Runtime, node: SelectionStatementP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // === ITERATION STATEMENTS ===
 
   // TODO
   DoWhileLoop: (runtime: Runtime, node: DoWhileLoopP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // TODO
   WhileLoop: (runtime: Runtime, node: WhileLoopP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // TODO
   ForLoop: (runtime: Runtime, node: ForLoopP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // === JUMP STATEMENTS ===
@@ -71,41 +71,28 @@ export const NodeEvaluator: {
 
   // TODO
   BreakStatement: (runtime: Runtime, node: BreakStatementP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // TODO
   ContinueStatement: (runtime: Runtime, node: ContinueStatementP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // TODO
   SwitchStatement: (runtime: Runtime, node: SwitchStatementP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // TODO
   MemoryStore: (runtime: Runtime, node: MemoryStore): Runtime => {
-    const newRuntime = runtime.pushNode(node.value);
-    return newRuntime;
-  },
+    const newRuntime = runtime.pushNode([node.value]);
 
-  FunctionDefinition: (runtime: Runtime, node: FunctionDefinitionP): Runtime => {
-    let newRuntime = runtime.addFunction(node.name, node);
-
-    if (node.name === "main") {
-      if (node.body && node.body.length > 0) {
-        for (let i = node.body.length - 1; i >= 0; i--) {
-          newRuntime = newRuntime.pushNode(node.body[i]);
-        }
-      }
-    }
-    
     return newRuntime;
   },
 
   FunctionCall: (runtime: Runtime, node: FunctionCallP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
  // ========== EXPRESSIONS ==========
@@ -119,30 +106,29 @@ export const NodeEvaluator: {
   },
 
   BinaryExpression: (runtime: Runtime, node: BinaryExpressionP): Runtime => {    
-    const runtimeWithInstruction = runtime.pushInstruction(binaryOpInstruction(node.operator));
-    const runtimeWithRight = runtimeWithInstruction.pushNode(node.rightExpr);
+    const runtimeWithInstruction = runtime.pushInstruction([binaryOpInstruction(node.operator)]);
+    const runtimeWithRight = runtimeWithInstruction.pushNode([node.rightExpr]);
     
-    return runtimeWithRight.pushNode(node.leftExpr);
+    return runtimeWithRight.pushNode([node.leftExpr]);
   },
 
   UnaryExpression: (runtime: Runtime, node: UnaryExpressionP): Runtime => {
-    const runtimeWithInstruction = runtime.pushInstruction(unaryOpInstruction(node.operator));
-    
-    return runtimeWithInstruction.pushNode(node.expr);
+    const runtimeWithInstruction = runtime.pushInstruction([unaryOpInstruction(node.operator)]);
+    return runtimeWithInstruction.pushNode([node.expr]);
   },
 
   // TODO
   PreStatementExpression: (runtime: Runtime, node: PreStatementExpressionP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // TODO
   PostStatementExpression: (runtime: Runtime, node: PostStatementExpressionP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   ConditionalExpression: (runtime: Runtime, node: ConditionalExpressionP): Runtime => {
-    const runtimeWithInstruction = runtime.pushInstruction(branchOpInstruction(node.trueExpression, node.falseExpression));
-    return runtimeWithInstruction.pushNode(node.condition);
+    const runtimeWithInstruction = runtime.pushInstruction([branchOpInstruction(node.trueExpression, node.falseExpression)]);
+    return runtimeWithInstruction.pushNode([node.condition]);
   }
 };

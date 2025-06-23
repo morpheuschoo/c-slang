@@ -23,6 +23,10 @@ export class Stack<T, R = any> implements ImmutableStack<T, R> {
     return new Stack<T>(items) as unknown as R;
   }
 
+  concat(item: T[]) {
+    return this.createNew([...this.items, ...item]);
+  }
+
   push(item: T): R {
     return this.createNew([...this.items, item]);
   }

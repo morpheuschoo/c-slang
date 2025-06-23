@@ -1,73 +1,57 @@
 import { Control } from "~src/interpreter/utils/control";
 import { Stash } from "~src/interpreter/utils/stash";
-import { CNodeP } from "~src/processor/c-ast/core";
+import { CAstRootP, CNodeP } from "~src/processor/c-ast/core";
 import { Instruction, isInstruction } from "~src/interpreter/controlItems/instructions";
 import { NodeEvaluator } from "~src/interpreter/evaluators/nodeEvaluator";
 import { InstructionEvaluator } from "~src/interpreter/evaluators/instructionEvaluator";
 import { FunctionDefinitionP } from "~src/processor/c-ast/function";
+import { FunctionTable } from "~src/processor/symbolTable";
+import { Memory } from "./memory";
 
 
 export class Runtime {
   private readonly control: Control;
   private readonly stash: Stash;
+  private readonly memory: Memory;
   
   // To be removed and use FunctionTable provided in CAstRootP
-  private readonly functions: ReadonlyMap<string, FunctionDefinitionP>;
-
-  // To be impoved
-  private readonly isCompleted: boolean;
+  public static astRootP: CAstRootP;
 
   constructor(
-    program: ReadonlyArray<CNodeP>, 
     control?: Control,
     stash?: Stash,
-    functions?: ReadonlyMap<string, FunctionDefinitionP>,
-    isCompleted: boolean = false
+    memory?: Memory
   ) {
     this.stash = stash || new Stash();
-    this.functions = functions || new Map<string, FunctionDefinitionP>();
-    this.isCompleted = isCompleted;
-    
-    if (!control && program.length > 0) {
-      let newControl = new Control();
-      for (let i = program.length - 1; i >= 0; i--) {
-        newControl = newControl.push(program[i]);
+    this.control = control || new Control();
+
+    if(!memory) {
+      if(!Runtime.astRootP) {
+        throw new Error("AST Root node not assigned");
       }
-      this.control = newControl;
+
+      this.memory = new Memory(Runtime.astRootP.dataSegmentByteStr, Runtime.astRootP.dataSegmentSizeInBytes);
     } else {
-      this.control = control || new Control();
+      this.memory = memory;
     }
   }
-  
+
   next(): Runtime {
-    if (this.isCompleted || this.control.isEmpty()) {
-      return new Runtime([], this.control, this.stash, this.functions, true);
-    }
-    
-    // maybe should fix this???
-    const [item, newControl] = this.control.pop();
-    if (item === undefined) {
-      return new Runtime(
-        [],
-        newControl,
-        this.stash,
-        this.functions,
-        newControl.isEmpty()
-      );
+    if (this.hasCompleted()) {
+      return new Runtime(this.control, this.stash, this.memory);
     }
 
-    const thisWithPoppedControl = new Runtime(
-      [],
+    const [item, newControl] = this.control.pop();
+    const poppedRuntime = new Runtime(
       newControl,
       this.stash,
-      this.functions,
-      newControl.isEmpty()
+      this.memory,
     );
 
     if (isInstruction(item)) {
-      return thisWithPoppedControl.evaluateInstruction(item as Instruction);
+      return poppedRuntime.evaluateInstruction(item as Instruction);
     } else {
-      return thisWithPoppedControl.evaluateNode(item as CNodeP);
+      return poppedRuntime.evaluateNode(item as CNodeP);
     }
   }
   
@@ -77,16 +61,7 @@ export class Runtime {
       const result = evaluator(this, node as any);
       return result;
     } else {
-
-      // should not even come here
-      const newRuntime = new Runtime(
-        [],
-        this.control,
-        this.stash.push(null), 
-        this.functions, 
-        this.isCompleted
-      );
-      return newRuntime;
+      throw new Error("Unknown node type");
     }
   }
 
@@ -94,67 +69,37 @@ export class Runtime {
     if (InstructionEvaluator[instruction.type]) {
       const result = InstructionEvaluator[instruction.type](this, instruction as any);
       return result;
-    } else {
-
-      // should not even come here
-      const newRuntime = new Runtime(
-        [],
-        this.control,
-        this.stash, 
-        this.functions, 
-        this.isCompleted
-      );
-      return newRuntime;
+    } else {   
+      throw new Error("Unknown instruction type");
     }
   }
   
   // TODO
-  addFunction(name: string, def: FunctionDefinitionP): Runtime {
-    const newFunctions = new Map(this.functions);
-    newFunctions.set(name, def);
-    return new Runtime(
-      [],
-      this.control,
-      this.stash,
-      newFunctions,
-      this.isCompleted
-    );
-  }
-  
-  // TODO
   getFunction(name: string): FunctionDefinitionP | undefined {
-    return this.functions.get(name);
+    return Runtime.astRootP.functions.find(x => x.name === name);
   }
   
-  pushNode(node: CNodeP): Runtime {
-    if (!node) return this;
-    
+  pushNode(node: CNodeP[]): Runtime {
     return new Runtime(
-      [],
-      this.control.push(node),
+      this.control.concat(node.reverse()),
       this.stash,
-      this.functions,
-      false
+      this.memory,
     );
   }
   
-  pushInstruction(instruction: Instruction): Runtime {
+  pushInstruction(instruction: Instruction[]): Runtime {
     return new Runtime(
-      [],
-      this.control.push(instruction),
+      this.control.concat(instruction.reverse()),
       this.stash,
-      this.functions,
-      false
+      this.memory,
     );
   }
   
   pushValue(value: any): Runtime {
     return new Runtime(
-      [],
       this.control,
       this.stash.push(value),
-      this.functions,
-      this.isCompleted
+      this.memory,
     );
   }
   
@@ -163,17 +108,15 @@ export class Runtime {
     return [
       value, 
       new Runtime(
-        [],
         this.control,
         newStash,
-        this.functions,
-        this.isCompleted
+        this.memory,
       )
     ];
   }
   
   hasCompleted(): boolean {
-    return this.isCompleted || this.control.isEmpty();
+    return this.control.isEmpty();
   }
 
   getResult(): any {
@@ -190,11 +133,11 @@ export class Runtime {
     result += this.stash.toString();
     
     result += "\n\nREGISTERED FUNCTIONS:\n";
-    if (this.functions.size === 0) {
+    if (Runtime.astRootP.functions.length === 0) {
       result += "  <none>";
     } else {
-      for (const [name, _] of this.functions) {
-        result += `  ${name}\n`;
+      for (const func of Runtime.astRootP.functions) {
+        result += `  ${func.name}\n`;
       }
     }
     
