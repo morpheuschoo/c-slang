@@ -1,5 +1,7 @@
 import { CAstRootP } from "~src/processor/c-ast/core";
 import { Runtime } from "~src/interpreter/runtime";
+import { FunctionCallP } from "~src/processor/c-ast/function";
+import { Control } from "./utils/control";
 
 export class Interpreter {
   private readonly runtimeStack: Runtime[];
@@ -13,7 +15,14 @@ export class Interpreter {
   }
 
   interpret(): void {
-    const initialRuntime = new Runtime(this.astRootNode.functions);
+    Runtime.astRootP = this.astRootNode;
+    const mainFunction = Runtime.astRootP.functions.find(x => x.name === "main");
+
+    if(!mainFunction) {
+      throw new Error("Main function not defined");
+    }
+    const initialRuntime = new Runtime(new Control(mainFunction.body));
+
     this.runtimeStack.push(initialRuntime);
     
     let currentRuntime = initialRuntime;

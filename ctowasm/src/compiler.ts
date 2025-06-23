@@ -49,6 +49,8 @@ export async function compile(
         generateCompilationWarningMessage(w.message, cSourceCode, w.position),
       ),
     );
+    interpret(astRootNode);
+
     const wasmModule = translate(astRootNode, moduleRepository);
     const output = await compileWatToWasm(generateWat(wasmModule));
     return {

@@ -42,24 +42,24 @@ export const NodeEvaluator: {
 
   // TODO
   SelectionStatement: (runtime: Runtime, node: SelectionStatementP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // === ITERATION STATEMENTS ===
 
   // TODO
   DoWhileLoop: (runtime: Runtime, node: DoWhileLoopP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // TODO
   WhileLoop: (runtime: Runtime, node: WhileLoopP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // TODO
   ForLoop: (runtime: Runtime, node: ForLoopP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // === JUMP STATEMENTS ===
@@ -71,17 +71,17 @@ export const NodeEvaluator: {
 
   // TODO
   BreakStatement: (runtime: Runtime, node: BreakStatementP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // TODO
   ContinueStatement: (runtime: Runtime, node: ContinueStatementP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // TODO
   SwitchStatement: (runtime: Runtime, node: SwitchStatementP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // TODO
@@ -90,22 +90,23 @@ export const NodeEvaluator: {
     return newRuntime;
   },
 
-  FunctionDefinition: (runtime: Runtime, node: FunctionDefinitionP): Runtime => {
-    let newRuntime = runtime.addFunction(node.name, node);
+  
+  // FunctionDefinition: (runtime: Runtime, node: FunctionDefinitionP): Runtime => {
+  //   let newRuntime = runtime.addFunction(node.name, node);
 
-    if (node.name === "main") {
-      if (node.body && node.body.length > 0) {
-        for (let i = node.body.length - 1; i >= 0; i--) {
-          newRuntime = newRuntime.pushNode(node.body[i]);
-        }
-      }
-    }
+  //   if (node.name === "main") {
+  //     if (node.body && node.body.length > 0) {
+  //       for (let i = node.body.length - 1; i >= 0; i--) {
+  //         newRuntime = newRuntime.pushNode(node.body[i]);
+  //       }
+  //     }
+  //   }
     
-    return newRuntime;
-  },
+  //   return newRuntime;
+  // },
 
   FunctionCall: (runtime: Runtime, node: FunctionCallP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
  // ========== EXPRESSIONS ==========
@@ -133,12 +134,12 @@ export const NodeEvaluator: {
 
   // TODO
   PreStatementExpression: (runtime: Runtime, node: PreStatementExpressionP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   // TODO
   PostStatementExpression: (runtime: Runtime, node: PostStatementExpressionP): Runtime => {
-    return new Runtime([]);
+    return new Runtime();
   },
 
   ConditionalExpression: (runtime: Runtime, node: ConditionalExpressionP): Runtime => {
