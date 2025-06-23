@@ -1,7 +1,8 @@
+import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { Stack } from "./stack";
 
 // TO FIX: define the types
-export type StashItem = any;
+export type StashItem = ConstantP;
 
 export class Stash extends Stack<StashItem, Stash> {
   protected createNew(items: ReadonlyArray<StashItem>): Stash {
@@ -29,8 +30,8 @@ export class Stash extends Stack<StashItem, Stash> {
     if (item === null) return "null";
     if (item === undefined) return "undefined";
     
-    if (typeof item === "number" || typeof item === "boolean") {
-      return item.toString();
+    if (typeof item.value === "number" || typeof item.value === "boolean") {
+      return item.value.toString();
     }
     
     if (typeof item === "string") {

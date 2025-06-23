@@ -1,4 +1,4 @@
-import { Control } from "~src/interpreter/utils/control";
+import { ControlItem, Control } from "~src/interpreter/utils/control";
 import { Stash } from "~src/interpreter/utils/stash";
 import { CAstRootP, CNodeP } from "~src/processor/c-ast/core";
 import { Instruction, isInstruction } from "~src/interpreter/controlItems/instructions";
@@ -7,6 +7,9 @@ import { InstructionEvaluator } from "~src/interpreter/evaluators/instructionEva
 import { FunctionDefinitionP } from "~src/processor/c-ast/function";
 import { FunctionTable } from "~src/processor/symbolTable";
 import { Memory } from "./memory";
+import { ScalarCDataType } from "~src/common/types";
+import { Address } from "~src/processor/c-ast/memory";
+import { ConstantP } from "~src/processor/c-ast/expression/constants";
 
 
 export class Runtime {
@@ -69,7 +72,7 @@ export class Runtime {
     if (InstructionEvaluator[instruction.type]) {
       const result = InstructionEvaluator[instruction.type](this, instruction as any);
       return result;
-    } else {   
+    } else {
       throw new Error("Unknown instruction type");
     }
   }
@@ -77,6 +80,25 @@ export class Runtime {
   // TODO
   getFunction(name: string): FunctionDefinitionP | undefined {
     return Runtime.astRootP.functions.find(x => x.name === name);
+  }
+
+  // MEMORY
+  memoryWrite(address: Address, value: ConstantP, datatype: ScalarCDataType) {
+    switch (address.type) {
+      case "LocalAddress":
+        
+    }
+
+    return new Runtime(this.control, this.stash, this.memory.write(address, value, datatype))
+  }
+
+  // function to push general instruction/CNodeP onto the control
+  push(item: ControlItem[]): Runtime {
+    return new Runtime(
+      this.control.concat(item.reverse()),
+      this.stash,
+      this.memory,
+    );
   }
   
   pushNode(node: CNodeP[]): Runtime {
@@ -95,7 +117,7 @@ export class Runtime {
     );
   }
   
-  pushValue(value: any): Runtime {
+  pushValue(value: ConstantP): Runtime {
     return new Runtime(
       this.control,
       this.stash.push(value),

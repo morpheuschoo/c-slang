@@ -6,6 +6,7 @@ import {
   UnaryOpInstruction, 
   branchOpInstruction,
   popInstruction,
+  AssignmentInstruction,
  } from "~src/interpreter/controlItems/instructions";
 
 export const InstructionEvaluator: {
@@ -66,9 +67,14 @@ export const InstructionEvaluator: {
     const isTrue = Boolean(condition);
     
     if (isTrue) {
-      return runtimeWithPoppedValue.pushNode([instruction.trueExpr]);
+      return runtime.pushNode([instruction.trueExpr]);
     }
-    return runtimeWithPoppedValue.pushNode([instruction.falseExpr]);
+    return runtime.pushNode([instruction.falseExpr]);
+  },
+
+  [InstructionType.ASSIGNMENT]: (runtime: Runtime, instruction: AssignmentInstruction): Runtime => {
+    const value = runtime.getResult();
+    return runtime.push([]);
   },
 
   [InstructionType.POP]: (runtime: Runtime, instruction: popInstruction): Runtime => {
