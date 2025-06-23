@@ -125,19 +125,17 @@ export class Runtime {
     return Runtime.astRootP.functions.find(x => x.name === name);
   }
   
-  pushNode(node: CNodeP): Runtime {
-    if (!node) return this;
-    
+  pushNode(node: CNodeP[]): Runtime {
     return new Runtime(
-      this.control.push(node),
+      this.control.concat(node.reverse()),
       this.stash,
       this.memory,
     );
   }
   
-  pushInstruction(instruction: Instruction): Runtime {
+  pushInstruction(instruction: Instruction[]): Runtime {
     return new Runtime(
-      this.control.push(instruction),
+      this.control.concat(instruction.reverse()),
       this.stash,
       this.memory,
     );

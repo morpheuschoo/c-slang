@@ -87,6 +87,7 @@ export const NodeEvaluator: {
   // TODO
   MemoryStore: (runtime: Runtime, node: MemoryStore): Runtime => {
     const newRuntime = runtime.pushNode(node.value);
+
     return newRuntime;
   },
 
@@ -120,16 +121,16 @@ export const NodeEvaluator: {
   },
 
   BinaryExpression: (runtime: Runtime, node: BinaryExpressionP): Runtime => {    
-    const runtimeWithInstruction = runtime.pushInstruction(binaryOpInstruction(node.operator));
-    const runtimeWithRight = runtimeWithInstruction.pushNode(node.rightExpr);
+    const runtimeWithInstruction = runtime.pushInstruction([binaryOpInstruction(node.operator)]);
+    const runtimeWithRight = runtimeWithInstruction.pushNode([node.rightExpr]);
     
-    return runtimeWithRight.pushNode(node.leftExpr);
+    return runtimeWithRight.pushNode([node.leftExpr]);
   },
 
   UnaryExpression: (runtime: Runtime, node: UnaryExpressionP): Runtime => {
-    const runtimeWithInstruction = runtime.pushInstruction(unaryOpInstruction(node.operator));
+    const runtimeWithInstruction = runtime.pushInstruction([unaryOpInstruction(node.operator)]);
     
-    return runtimeWithInstruction.pushNode(node.expr);
+    return runtimeWithInstruction.pushNode([node.expr]);
   },
 
   // TODO
@@ -143,7 +144,7 @@ export const NodeEvaluator: {
   },
 
   ConditionalExpression: (runtime: Runtime, node: ConditionalExpressionP): Runtime => {
-    const runtimeWithInstruction = runtime.pushInstruction(branchOpInstruction(node.trueExpression, node.falseExpression));
-    return runtimeWithInstruction.pushNode(node.condition);
+    const runtimeWithInstruction = runtime.pushInstruction([branchOpInstruction(node.trueExpression, node.falseExpression)]);
+    return runtimeWithInstruction.pushNode([node.condition]);
   }
 };
