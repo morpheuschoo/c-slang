@@ -91,21 +91,6 @@ export const NodeEvaluator: {
     return newRuntime;
   },
 
-  
-  // FunctionDefinition: (runtime: Runtime, node: FunctionDefinitionP): Runtime => {
-  //   let newRuntime = runtime.addFunction(node.name, node);
-
-  //   if (node.name === "main") {
-  //     if (node.body && node.body.length > 0) {
-  //       for (let i = node.body.length - 1; i >= 0; i--) {
-  //         newRuntime = newRuntime.pushNode(node.body[i]);
-  //       }
-  //     }
-  //   }
-    
-  //   return newRuntime;
-  // },
-
   FunctionCall: (runtime: Runtime, node: FunctionCallP): Runtime => {
     return new Runtime();
   },
@@ -129,7 +114,6 @@ export const NodeEvaluator: {
 
   UnaryExpression: (runtime: Runtime, node: UnaryExpressionP): Runtime => {
     const runtimeWithInstruction = runtime.pushInstruction([unaryOpInstruction(node.operator)]);
-    
     return runtimeWithInstruction.pushNode([node.expr]);
   },
 

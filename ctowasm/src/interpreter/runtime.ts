@@ -40,18 +40,7 @@ export class Runtime {
     if (this.hasCompleted()) {
       return new Runtime(this.control, this.stash, this.memory);
     }
-    
-    // // maybe should fix this???
-    // if (item === undefined) {
-      //   return new Runtime(
-        //     [],
-        //     newControl,
-        //     this.stash,
-        //     this.functions,
-        //     newControl.isEmpty()
-        //   );
-        // }
-        
+
     const [item, newControl] = this.control.pop();
     const poppedRuntime = new Runtime(
       newControl,
@@ -72,17 +61,6 @@ export class Runtime {
       const result = evaluator(this, node as any);
       return result;
     } else {
-
-      // should not even come here
-      // const newRuntime = new Runtime(
-      //   [],
-      //   this.control,
-      //   this.stash.push(null), 
-      //   this.functions, 
-      //   this.isCompleted
-      // );
-      // return newRuntime;
-    
       throw new Error("Unknown node type");
     }
   }
@@ -91,34 +69,10 @@ export class Runtime {
     if (InstructionEvaluator[instruction.type]) {
       const result = InstructionEvaluator[instruction.type](this, instruction as any);
       return result;
-    } else {
-
-      // should not even come here
-      // const newRuntime = new Runtime(
-      //   [],
-      //   this.control,
-      //   this.stash, 
-      //   this.functions, 
-      //   this.isCompleted
-      // );
-      // return newRuntime;
-      
+    } else {   
       throw new Error("Unknown instruction type");
     }
   }
-  
-  // TODO
-  // addFunction(name: string, def: FunctionDefinitionP): Runtime {
-  //   const newFunctions = new Map(this.functions);
-  //   newFunctions.set(name, def);
-  //   return new Runtime(
-  //     [],
-  //     this.control,
-  //     this.stash,
-  //     newFunctions,
-  //     this.isCompleted
-  //   );
-  // }
   
   // TODO
   getFunction(name: string): FunctionDefinitionP | undefined {

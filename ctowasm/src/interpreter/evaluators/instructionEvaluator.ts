@@ -62,13 +62,13 @@ export const InstructionEvaluator: {
   },
 
   [InstructionType.BRANCH]: (runtime: Runtime, instruction: branchOpInstruction): Runtime => {
-    const condition = runtime.popValue();
+    const [condition, runtimeWithPoppedValue] = runtime.popValue();
     const isTrue = Boolean(condition);
     
     if (isTrue) {
-      return runtime.pushNode(instruction.trueExpr);
+      return runtimeWithPoppedValue.pushNode([instruction.trueExpr]);
     }
-    return runtime.pushNode(instruction.falseExpr);
+    return runtimeWithPoppedValue.pushNode([instruction.falseExpr]);
   },
 
   [InstructionType.POP]: (runtime: Runtime, instruction: popInstruction): Runtime => {
