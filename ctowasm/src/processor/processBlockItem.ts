@@ -327,9 +327,19 @@ export default function processBlockItem(
       node.type === "StructMemberAccess"
     ) {
       addWarning("statement with no effect", node.position);
-      processExpression(node, symbolTable, enclosingFunc);
+
+      // NOTE: commented out to disable removal of "redundant" statements
+      // processExpression(node, symbolTable, enclosingFunc);
       // all these expression statements can be safely ignored as they have no side effects
-      return [];
+      // return [];
+      
+      const processed = processExpression(node, symbolTable, enclosingFunc);
+
+      return [{
+        type: "ExpressionStatement",
+        expr: processed.exprs[0]
+      }];
+
     } else if (node.type === "StringLiteral") {
       addWarning("statement with no effect", node.position);
       return [];

@@ -28,6 +28,7 @@ import { JumpStatementP } from "~src/processor/c-ast/statement/jumpStatement";
 import { PrimaryDataTypeMemoryObjectDetails } from "~src/processor/dataTypeUtil";
 import { ModuleName } from "~src/modules";
 import { FunctionTable } from "~src/processor/symbolTable";
+import { ExpressionStatementP } from "./statement/expressionStatement";
 
 export type CNodeP = FunctionDefinitionP | StatementP | ExpressionP;
 
@@ -45,7 +46,8 @@ export type StatementP =
   | FunctionCallP
   | JumpStatementP
   | MemoryStore
-  | SwitchStatementP;
+  | SwitchStatementP
+  | ExpressionStatementP;
 
 // An expression results in the "loading" of a primary data type from memory (could be to a virtual stack as in Wasm, or register in other architectures)
 export type ExpressionP =
