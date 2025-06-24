@@ -1,8 +1,9 @@
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { Stack } from "./stack";
+import { Address } from "~src/processor/c-ast/memory";
 
 // TO FIX: define the types
-export type StashItem = ConstantP;
+export type StashItem = ConstantP | Address;
 
 export class Stash extends Stack<StashItem, Stash> {
   protected createNew(items: ReadonlyArray<StashItem>): Stash {
@@ -30,7 +31,9 @@ export class Stash extends Stack<StashItem, Stash> {
     if (item === null) return "null";
     if (item === undefined) return "undefined";
     
-    if (typeof item.value === "number" || typeof item.value === "boolean") {
+    if(item.dataType === "pointer") {
+      return "Pointer: ";
+    } else if (typeof item.value === "number" || typeof item.value === "boolean") {
       return item.value.toString();
     }
     

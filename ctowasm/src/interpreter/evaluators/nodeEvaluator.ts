@@ -20,7 +20,7 @@ import {
   PostStatementExpressionP,
   ConditionalExpressionP,
 } from "~src/processor/c-ast/expression/expressions";
-import { MemoryStore } from "~src/processor/c-ast/memory";
+import { Address, LocalAddress, MemoryStore } from "~src/processor/c-ast/memory";
 import { FunctionCallP, FunctionDefinitionP } from "~src/processor/c-ast/function";
 import { 
   BreakStatementP, 
@@ -101,11 +101,17 @@ export const NodeEvaluator: {
   MemoryStore: (runtime: Runtime, node: MemoryStore): Runtime => {
     const newRuntime = runtime.push([
       node.value, 
-      assignmentInstruction(node.address, node.dataType),
-      popInstruction()
+      node.address,
+      assignmentInstruction(node.dataType),
+      popInstruction(),
+      popInstruction(),
     ]);
 
     return newRuntime;
+  },
+
+  LocalAddress: (runtime: Runtime, node: LocalAddress): Runtime => {
+    return runtime.pushValue(node);
   },
 
   FunctionCall: (runtime: Runtime, node: FunctionCallP): Runtime => {

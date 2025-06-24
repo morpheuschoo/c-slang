@@ -50,27 +50,25 @@ export class Memory {
     };
   }
 
-  write(address: Address, value: ConstantP, datatype: ScalarCDataType) : Memory {
-    switch (address.type) {
-      case "LocalAddress":
-        const bytestr = convertConstantToByteStr(value, datatype);
-        // TODO: fix this
-        const byteArray = parseByteStr(bytestr);
-        const writeAddress = this.sharedWasmGlobalVariables.basePointer.value + address.offset;
+  checkOutOfBounds(address: bigint, size: bigint) {
+    return address < 0 || address > this.memory.buffer.byteLength || address + size < 0 || address + size > this.memory.buffer.byteLength; 
+  }
 
-        if(writeAddress < 0 || writeAddress > this.memory.buffer.byteLength || writeAddress + byteArray.length > this.memory.buffer.byteLength) {
-          throw new Error("Memory out of bounds");
-        }
-        const newMemory = this.clone();
-        const newMemoryView = new Uint8Array(newMemory.memory.buffer);
-        for(let i = 0; i < byteArray.length; i++) {
-          newMemoryView[i + writeAddress] = byteArray[i];
-        }
+  // function to write a data type with a value to the memory in the address
+  write(address: bigint, value: ConstantP, datatype: ScalarCDataType) : Memory {
+    const bytestr = convertConstantToByteStr(value, datatype);
+    const byteArray = parseByteStr(bytestr);
 
-        return newMemory;
+    if(this.checkOutOfBounds(address, BigInt(byteArray.length))) {
+      throw new Error("Memory out of bounds");
     }
-  
-    return this;
+    const newMemory = this.clone();
+    const newMemoryView = new Uint8Array(newMemory.memory.buffer);
+    for(let i = 0; i < byteArray.length; i++) {
+      newMemoryView[i + Number(address)] = byteArray[i];
+    }
+
+    return newMemory;
   }
 
   // Constructor to initiate the first runtime object
@@ -141,4 +139,32 @@ export class Memory {
 
     return clone;
   }
+
+  getFormattedMemoryView(start: number = 0, end?: number): string {
+    const memoryView = new Uint8Array(this.memory.buffer);
+    const length = end ?? memoryView.length;
+
+    const BP = Number(this.sharedWasmGlobalVariables.basePointer.value);
+    const SP = Number(this.sharedWasmGlobalVariables.stackPointer.value);
+    const HP = Number(this.sharedWasmGlobalVariables.heapPointer.value);
+
+    let result = "";
+    // result += "=== Memory Layout (partial) ===\n";
+    // result += `Base Pointer (BP):  0x${BP.toString(10)} (${BP})\n`;
+    // result += `Stack Pointer (SP): 0x${SP.toString(10)} (${SP})\n`;
+    // result += `Heap Pointer (HP):  0x${HP.toString(10)} (${HP})\n`;
+    // result += "================================\n";
+
+    // const bytesPerRow = 16;
+    // for (let i = start; i < Math.min(length, memoryView.length); i += bytesPerRow) {
+    //   const bytes = memoryView.slice(i, i + bytesPerRow);
+    //   const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
+    //   const ascii = Array.from(bytes).map(b => (b >= 32 && b < 127 ? String.fromCharCode(b) : '.')).join('');
+    //   result += `0x${i.toString(16).padStart(8, '0')}: ${hex.padEnd(3 * bytesPerRow)} | ${ascii}\n`;
+    // }
+
+    return result;
+  }
+
+
 }

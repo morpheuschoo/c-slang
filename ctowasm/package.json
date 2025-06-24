@@ -47,7 +47,7 @@
     "yargs": "^17.7.2"
   },
   "scripts": {
-    "build": "yarn clean-dist && yarn gen-parsers && parcel build --no-cache",
+    "build": "yarn clean-dist && yarn gen-parsers && parcel build --no-cache && cp -r dist ../../frontend/src/ctowasm",
     "lint": "eslint . --fix",
     "prettify": "prettier . --write",
     "compile": "yarn build && node cmd.js compile",

@@ -60,13 +60,11 @@ export const popInstruction = (): popInstruction => ({
 // MEMORY
 export interface AssignmentInstruction extends BaseInstruction {
   type: InstructionType.ASSIGNMENT;
-  address: Address;
   dataType: ScalarCDataType;
 }
 
-export const assignmentInstruction = (address: Address, dataType: ScalarCDataType): AssignmentInstruction => ({
+export const assignmentInstruction = (dataType: ScalarCDataType): AssignmentInstruction => ({
   type: InstructionType.ASSIGNMENT,
-  address: address,
   dataType: dataType,
 })
 
