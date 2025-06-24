@@ -1,10 +1,10 @@
 // A runtime class for the interpreter which encapsulates the memory 
 import { KB, WASM_PAGE_IN_HEX } from "~src/common/constants";
-import { calculateNumberOfPagesNeededForBytes, primaryDataTypeSizes } from "~src/common/utils";
+import { calculateNumberOfPagesNeededForBytes, isFloatType, isIntegerType, primaryDataTypeSizes } from "~src/common/utils";
 import { WASM_ADDR_TYPE } from "~src/translator/memoryUtil";
 import { SharedWasmGlobalVariables } from "~src/modules";
 import { Address } from "~src/processor/c-ast/memory";
-import { ScalarCDataType } from "~src/common/types";
+import { FloatDataType, IntegerDataType, ScalarCDataType } from "~src/common/types";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { convertConstantToByteStr } from "~src/processor/byteStrUtil";
 
@@ -51,7 +51,7 @@ export class Memory {
   }
 
   checkOutOfBounds(address: bigint, size: bigint) {
-    return address < 0 || address > this.memory.buffer.byteLength || address + size < 0 || address + size > this.memory.buffer.byteLength; 
+    return address < 0 || address >= this.memory.buffer.byteLength || address + size < 0 || address + size > this.memory.buffer.byteLength; 
   }
 
   // function to write a data type with a value to the memory in the address
@@ -72,7 +72,63 @@ export class Memory {
   }
 
   load(address: bigint, datatype: ScalarCDataType) : ConstantP {
+    // TODO: This needs to be fixed
+    if(datatype === "pointer") {
+      datatype = "unsigned int"
+    }
     
+    const size = primaryDataTypeSizes[datatype];
+    this.checkOutOfBounds(address, BigInt(size));
+    
+    console.log("MEMORY LOAD INVOKED");
+    console.log(address)
+    console.log(datatype);
+    console.log(size);
+
+    let view = new Uint8Array(this.memory.buffer);
+    if(isIntegerType(datatype)) {
+      datatype as IntegerDataType;
+
+      let value = 0n;
+      for (let i = 0; i < size; i++) {
+        value |= BigInt(view[Number(address) + i]) << BigInt(8 * i);
+      }
+      
+      const signBit = 1n << BigInt(size * 8 - 1);
+      const fullMask = 1n << BigInt(size * 8);
+
+      if(value & signBit) {
+        value = value - fullMask
+      } else {
+        value = value;
+      }
+
+      const res : ConstantP = {
+        type: "IntegerConstant",
+        value: value,
+        dataType: datatype
+      }
+      return res;
+
+    } else if(isFloatType(datatype)) {
+      datatype as FloatDataType;
+
+      let view = new Uint8Array(this.memory.buffer);
+      const buffer = view.slice(Number(address), Number(address) + size)
+      const floatValue = datatype === "float" ? new Float32Array(buffer)[0] : new Float64Array(buffer)[0];
+      
+      const res : ConstantP = {
+        type: "FloatConstant",
+        value: floatValue,
+        dataType: datatype,
+      }       
+      console.log("MEMORY LOADED");
+      console.log(res);
+      return res;
+
+    } else {
+      throw new Error("Unknown load value type");
+    }
   }
 
   // Constructor to initiate the first runtime object
@@ -101,7 +157,7 @@ export class Memory {
       ),
       basePointer: new WebAssembly.Global(
         { value: WASM_ADDR_TYPE, mutable: true },
-        0,
+        WASM_PAGE_IN_HEX * initialPages,
       ),
       heapPointer: new WebAssembly.Global(
         { value: WASM_ADDR_TYPE, mutable: true },

@@ -88,7 +88,7 @@ export class Runtime {
   memoryWrite(address: Address | ConstantP, value: ConstantP, datatype: ScalarCDataType) : Runtime {
     switch(address.type) {
       case "LocalAddress": {
-        const writeAddress = this.memory.sharedWasmGlobalVariables.basePointer.value + address.offset;
+        const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.basePointer.value) + address.offset.value;
         return new Runtime(this.control, this.stash, this.memory.write(writeAddress, value, datatype));
       }
 
@@ -116,6 +116,7 @@ export class Runtime {
 
       case "FunctionTableIndex": {
         // TODO: Figur out later
+        throw new Error("Havent implemented")
       }
 
       case "FloatConstant": {
@@ -123,14 +124,56 @@ export class Runtime {
       }
 
     }
-
-    return new Runtime(this.control, this.stash, this.memory.write(address, value, datatype))
   }
 
-  memoryLoad(node: MemoryLoad) {
-    return this.pushValue(this.memory.load(
-      node.address
-    ))
+  memoryLoad(address: Address | ConstantP, dataType: ScalarCDataType) {
+    console.log("RUNTIME LOAD");
+    console.log(address);
+    console.log(dataType);
+
+    switch(address.type) {
+      case "LocalAddress": {
+        const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.basePointer.value) + address.offset.value;
+        console.log("ASD");
+        console.log(writeAddress);
+        const value = this.memory.load(writeAddress, dataType);
+        const [ _, newRuntime ] = this.popValue();
+
+        return newRuntime.pushValue(value);
+      }
+
+      case "DataSegmentAddress": {
+        const writeAddress = address.offset.value;
+        return this.pushValue(this.memory.load(writeAddress, dataType));
+      }
+      
+      case "IntegerConstant": {
+        const writeAddress = address.value
+        return this.pushValue(this.memory.load(writeAddress, dataType));
+      }
+      
+      case "ReturnObjectAddress": {
+        if(address.subtype === "load") {
+          throw new Error("Return object load instruction found in memory write")
+        }
+        const writeAddress = address.offset.value;
+        return this.pushValue(this.memory.load(writeAddress, dataType));
+      }
+
+      case "DynamicAddress": {
+        throw new Error("Dynamic address should not be processed in memory write");
+      }
+
+      case "FunctionTableIndex": {
+        // TODO: Figur out later
+        throw new Error("Havent implemented")
+      }
+
+      case "FloatConstant": {
+        throw new Error("Cannot access an address whose value is a float");
+      }
+
+    }
   }
 
   // function to push general instruction/CNodeP onto the control

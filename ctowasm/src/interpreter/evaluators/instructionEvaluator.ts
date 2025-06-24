@@ -92,11 +92,7 @@ export const InstructionEvaluator: {
     const [ address, runtimeAfter ]= runtime.popValue();
     const [ value, e ] = runtimeAfter.popValue();
 
-    console.log("HERHE");
-    console.log(address);
-    console.log(value);
-
-    if(value.type !== "IntegerConstant") {
+    if(value.type !== "IntegerConstant" && value.type !== "FloatConstant") {
       throw new Error("Not implemented yet");
     }
 
@@ -104,8 +100,8 @@ export const InstructionEvaluator: {
   },
 
   [InstructionType.MEMORYLOAD]: (runtime: Runtime, instruction: MemoryLoadInstruction): Runtime => {
-    
-    return runtime;
+    const [ address, _ ] = runtime.popValue();
+    return runtime.memoryLoad(address, instruction.dataType);
   },
 
   [InstructionType.POP]: (runtime: Runtime, instruction: popInstruction): Runtime => {

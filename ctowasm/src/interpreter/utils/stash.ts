@@ -31,26 +31,28 @@ export class Stash extends Stack<StashItem, Stash> {
     if (item === null) return "null";
     if (item === undefined) return "undefined";
     
-    if(item.dataType === "pointer") {
-      return "Pointer: ";
-    } else if (typeof item.value === "number" || typeof item.value === "boolean") {
+    if(item.type === "IntegerConstant" || item.type === "FloatConstant") {
       return item.value.toString();
     }
+
+    if(item.dataType === "pointer") {
+      return "Pointer: ";
+    } 
     
     if (typeof item === "string") {
       return `"${item}"`;
     }
     
-    if (Array.isArray(item)) {
-      return `Array(${item.length})`;
-    }
+    // if (Array.isArray(item)) {
+    //   return `Array(${item.length})`;
+    // }
     
-    if (typeof item === "object") {
-      if (item.hasOwnProperty("type") && typeof item.type === "string") {
-        return `Object(${item.type})`;
-      }
-      return `Object: ${JSON.stringify(item).substring(0, 50)}${JSON.stringify(item).length > 50 ? '...' : ''}`;
-    }
+    // if (typeof item === "object") {
+    //   if (item.hasOwnProperty("type") && typeof item.type === "string") {
+    //     return `Object(${item.type})`;
+    //   }
+    //   return `Object: ${JSON.stringify(item).substring(0, 50)}${JSON.stringify(item).length > 50 ? '...' : ''}`;
+    // }
     
     return String(item);
   }

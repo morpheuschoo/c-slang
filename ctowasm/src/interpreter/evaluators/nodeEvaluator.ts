@@ -4,6 +4,7 @@ import {
   branchOpInstruction, 
   InstructionType, 
   memoryLoadInstruction, 
+  memoryStoreInstruction, 
   popInstruction, 
   unaryOpInstruction 
 } from "~src/interpreter/controlItems/instructions";
@@ -102,7 +103,7 @@ export const NodeEvaluator: {
     const newRuntime = runtime.push([
       node.value, 
       node.address,
-      memoryLoadInstruction(node.dataType),
+      memoryStoreInstruction(node.dataType),
       popInstruction(),
       popInstruction(),
     ]);
@@ -141,6 +142,9 @@ export const NodeEvaluator: {
   },
 
   MemoryLoad: (runtime: Runtime, node: MemoryLoad): Runtime => {
+    console.log("MEMORYLOAD 1");
+    console.log(node);
+
     const newRuntime = runtime.push([
       node.address,
       memoryLoadInstruction(node.dataType)
