@@ -71,6 +71,10 @@ export class Memory {
     return newMemory;
   }
 
+  load(address: bigint, datatype: ScalarCDataType) : ConstantP {
+    
+  }
+
   // Constructor to initiate the first runtime object
   constructor(
     dataSegmentByteStr: string, // The string of bytes (each byte is in the form "\\XX" where X is a digit in base-16) to initialize the data segment with, determined by processing initializers for data segment variables.

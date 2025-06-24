@@ -6,7 +6,8 @@ import {
   UnaryOpInstruction, 
   branchOpInstruction,
   popInstruction,
-  AssignmentInstruction,
+  MemoryLoadInstruction,
+  MemoryStoreInstruction,
  } from "~src/interpreter/controlItems/instructions";
 import { FloatConstantP } from "~src/processor/c-ast/expression/constants";
 
@@ -87,7 +88,7 @@ export const InstructionEvaluator: {
     return runtime.pushNode([instruction.falseExpr]);
   },
 
-  [InstructionType.ASSIGNMENT]: (runtime: Runtime, instruction: AssignmentInstruction): Runtime => {
+  [InstructionType.MEMORYSTORE]: (runtime: Runtime, instruction: MemoryStoreInstruction): Runtime => {
     const [ address, runtimeAfter ]= runtime.popValue();
     const [ value, e ] = runtimeAfter.popValue();
 
@@ -100,6 +101,11 @@ export const InstructionEvaluator: {
     }
 
     return runtime.memoryWrite(address, value, instruction.dataType);
+  },
+
+  [InstructionType.MEMORYLOAD]: (runtime: Runtime, instruction: MemoryLoadInstruction): Runtime => {
+    
+    return runtime;
   },
 
   [InstructionType.POP]: (runtime: Runtime, instruction: popInstruction): Runtime => {

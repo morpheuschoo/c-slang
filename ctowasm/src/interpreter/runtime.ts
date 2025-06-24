@@ -8,7 +8,7 @@ import { FunctionDefinitionP } from "~src/processor/c-ast/function";
 import { FunctionTable } from "~src/processor/symbolTable";
 import { Memory } from "./memory";
 import { ScalarCDataType } from "~src/common/types";
-import { Address } from "~src/processor/c-ast/memory";
+import { Address, MemoryLoad } from "~src/processor/c-ast/memory";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 
 
@@ -125,6 +125,12 @@ export class Runtime {
     }
 
     return new Runtime(this.control, this.stash, this.memory.write(address, value, datatype))
+  }
+
+  memoryLoad(node: MemoryLoad) {
+    return this.pushValue(this.memory.load(
+      node.address
+    ))
   }
 
   // function to push general instruction/CNodeP onto the control
