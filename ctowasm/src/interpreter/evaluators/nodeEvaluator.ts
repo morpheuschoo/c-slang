@@ -1,8 +1,11 @@
 import { Runtime } from "~src/interpreter/runtime";
-import { 
-  assignmentInstruction, 
+import {  
   binaryOpInstruction, 
   branchOpInstruction, 
+  InstructionType, 
+  memoryLoadInstruction, 
+  memoryStoreInstruction, 
+  assignmentInstruction, 
   popInstruction, 
   unaryOpInstruction 
 } from "~src/interpreter/controlItems/instructions";
@@ -19,8 +22,8 @@ import {
   PostStatementExpressionP,
   ConditionalExpressionP,
 } from "~src/processor/c-ast/expression/expressions";
-import { MemoryLoad, MemoryStore } from "~src/processor/c-ast/memory";
-import { FunctionCallP } from "~src/processor/c-ast/function";
+import { Address, LocalAddress, MemoryLoad, MemoryStore } from "~src/processor/c-ast/memory";
+import { FunctionCallP, FunctionDefinitionP } from "~src/processor/c-ast/function";
 import { 
   BreakStatementP, 
   ContinueStatementP, 
@@ -100,11 +103,17 @@ export const NodeEvaluator: {
   MemoryStore: (runtime: Runtime, node: MemoryStore): Runtime => {
     const newRuntime = runtime.push([
       node.value, 
-      assignmentInstruction(node.address, node.dataType),
-      popInstruction()
+      node.address,
+      memoryStoreInstruction(node.dataType),
+      popInstruction(),
+      popInstruction(),
     ]);
 
     return newRuntime;
+  },
+
+  LocalAddress: (runtime: Runtime, node: LocalAddress): Runtime => {
+    return runtime.pushValue(node);
   },
 
   // TODO
@@ -137,6 +146,15 @@ export const NodeEvaluator: {
   UnaryExpression: (runtime: Runtime, node: UnaryExpressionP): Runtime => {
     const runtimeWithInstruction = runtime.pushInstruction([unaryOpInstruction(node.operator)]);
     return runtimeWithInstruction.pushNode([node.expr]);
+  },
+
+  MemoryLoad: (runtime: Runtime, node: MemoryLoad): Runtime => {
+    const newRuntime = runtime.push([
+      node.address,
+      memoryLoadInstruction(node.dataType)
+    ])
+
+    return newRuntime
   },
 
   // TODO

@@ -39,6 +39,13 @@ export class Stack<T, R = any> implements ImmutableStack<T, R> {
     return [lastItem, this.createNew(this.items.slice(0, -1))];
   }
 
+  getIdx(idx: number): T {
+    if(idx < 0 || idx >= this.items.length) {
+      throw new Error("Stack out of bounds");
+    }
+    return this.items[idx];
+  }
+
   peek(): T | undefined {
     if (this.isEmpty()) {
       return undefined;

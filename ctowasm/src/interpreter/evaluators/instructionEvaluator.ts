@@ -6,13 +6,17 @@ import {
   UnaryOpInstruction, 
   branchOpInstruction,
   popInstruction,
-  AssignmentInstruction,
+  MemoryLoadInstruction,
+  MemoryStoreInstruction,
  } from "~src/interpreter/controlItems/instructions";
+
+import { FloatConstantP } from "~src/processor/c-ast/expression/constants";
 import { performBinaryOperation, performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
 import { determineResultDataTypeOfBinaryExpression } from "~src/processor/expressionUtil";
 import { isIntegerType } from "~src/common/utils";
 import { getAdjustedIntValueAccordingToDataType } from "~src/processor/processConstant";
 import { FloatDataType, IntegerDataType, UnaryOperator } from "~src/common/types";
+
 
 export const InstructionEvaluator: {
   [InstrType in Instruction["type"]]: (
@@ -20,6 +24,7 @@ export const InstructionEvaluator: {
     instruction: Extract<Instruction, { type: InstrType }>) => Runtime
 } = {
   [InstructionType.UNARY_OP]: (runtime: Runtime, instruction: UnaryOpInstruction): Runtime => {
+    
     const [operand, runtimeAfterPop] = runtime.popValue();
 
     /**
@@ -84,7 +89,7 @@ export const InstructionEvaluator: {
         value: valueInt as bigint,
       });
     }
-
+  
     return runtimeAfterPopLeft.pushValue({
       type: "FloatConstant",
       dataType: dataType.primaryDataType as FloatDataType,
@@ -102,9 +107,20 @@ export const InstructionEvaluator: {
     return runtimeWithPoppedValue.pushNode(instruction.falseExpr);
   },
 
-  [InstructionType.ASSIGNMENT]: (runtime: Runtime, instruction: AssignmentInstruction): Runtime => {
-    const value = runtime.getResult();
-    return runtime.push([]);
+  [InstructionType.MEMORYSTORE]: (runtime: Runtime, instruction: MemoryStoreInstruction): Runtime => {
+    const [ address, runtimeAfter ]= runtime.popValue();
+    const [ value, e ] = runtimeAfter.popValue();
+
+    if(value.type !== "IntegerConstant" && value.type !== "FloatConstant") {
+      throw new Error("Not implemented yet");
+    }
+
+    return runtime.memoryWrite(address, value, instruction.dataType);
+  },
+
+  [InstructionType.MEMORYLOAD]: (runtime: Runtime, instruction: MemoryLoadInstruction): Runtime => {
+    const [ address, _ ] = runtime.popValue();
+    return runtime.memoryLoad(address, instruction.dataType);
   },
 
   [InstructionType.POP]: (runtime: Runtime, instruction: popInstruction): Runtime => {

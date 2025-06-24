@@ -10,7 +10,8 @@ export enum InstructionType {
   UNARY_OP = "UNARY_OP",
   BRANCH = "BRANCH",
   POP = "POP",
-  ASSIGNMENT = "ASSIGNMENT"
+  MEMORYSTORE = "MEMORYSTORE",
+  MEMORYLOAD = "MEMORYLOAD"
 }
 
 export interface BaseInstruction {
@@ -60,15 +61,23 @@ export const popInstruction = (): popInstruction => ({
 })
 
 // MEMORY
-export interface AssignmentInstruction extends BaseInstruction {
-  type: InstructionType.ASSIGNMENT;
-  address: Address;
+export interface MemoryStoreInstruction extends BaseInstruction {
+  type: InstructionType.MEMORYSTORE;
   dataType: ScalarCDataType;
 }
 
-export const assignmentInstruction = (address: Address, dataType: ScalarCDataType): AssignmentInstruction => ({
-  type: InstructionType.ASSIGNMENT,
-  address: address,
+export const memoryStoreInstruction = (dataType: ScalarCDataType): MemoryStoreInstruction => ({
+  type: InstructionType.MEMORYSTORE,
+  dataType: dataType,
+})
+
+export interface MemoryLoadInstruction extends BaseInstruction {
+  type: InstructionType.MEMORYLOAD;
+  dataType: ScalarCDataType;
+}
+
+export const memoryLoadInstruction = (dataType: ScalarCDataType): MemoryLoadInstruction => ({
+  type: InstructionType.MEMORYLOAD,
   dataType: dataType,
 })
 
@@ -77,7 +86,8 @@ export type Instruction =
   | UnaryOpInstruction
   | branchOpInstruction
   | popInstruction
-  | AssignmentInstruction;
+  | MemoryStoreInstruction
+  | MemoryLoadInstruction;
 
 export const isInstruction = (item: any): item is Instruction => {
   return item && typeof item === 'object' && 'type' in item && 

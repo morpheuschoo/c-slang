@@ -1,8 +1,8 @@
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { Stack } from "./stack";
+import { Address } from "~src/processor/c-ast/memory";
 
-// TO FIX: define the types
-export type StashItem = ConstantP;
+export type StashItem = ConstantP | Address;
 
 export class Stash extends Stack<StashItem, Stash> {
   protected createNew(items: ReadonlyArray<StashItem>): Stash {

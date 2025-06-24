@@ -7,7 +7,7 @@ import { InstructionEvaluator } from "~src/interpreter/evaluators/instructionEva
 import { FunctionDefinitionP } from "~src/processor/c-ast/function";
 import { Memory } from "./memory";
 import { ScalarCDataType } from "~src/common/types";
-import { Address } from "~src/processor/c-ast/memory";
+import { Address, MemoryLoad } from "~src/processor/c-ast/memory";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 
 
@@ -81,13 +81,89 @@ export class Runtime {
   }
 
   // MEMORY
-  memoryWrite(address: Address, value: ConstantP, datatype: ScalarCDataType) {
-    switch (address.type) {
-      case "LocalAddress":
-        
-    }
+  memoryWrite(address: Address | ConstantP, value: ConstantP, datatype: ScalarCDataType) : Runtime {
+    switch(address.type) {
+      case "LocalAddress": {
+        const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.basePointer.value) + address.offset.value;
+        return new Runtime(this.control, this.stash, this.memory.write(writeAddress, value, datatype));
+      }
 
-    return new Runtime(this.control, this.stash, this.memory.write(address, value, datatype))
+      case "DataSegmentAddress": {
+        const writeAddress = address.offset.value;
+        return new Runtime(this.control, this.stash, this.memory.write(writeAddress, value, datatype));
+      }
+      
+      case "IntegerConstant": {
+        const writeAddress = address.value
+        return new Runtime(this.control, this.stash, this.memory.write(writeAddress, value, datatype));
+      }
+      
+      case "ReturnObjectAddress": {
+        if(address.subtype === "load") {
+          throw new Error("Return object load instruction found in memory write")
+        }
+        const writeAddress = address.offset.value;
+        return new Runtime(this.control, this.stash, this.memory.write(writeAddress, value, datatype));
+      }
+
+      case "DynamicAddress": {
+        throw new Error("Dynamic address should not be processed in memory write");
+      }
+
+      case "FunctionTableIndex": {
+        // TODO: Figur out later
+        throw new Error("Havent implemented")
+      }
+
+      case "FloatConstant": {
+        throw new Error("Cannot access an address whose value is a float");
+      }
+
+    }
+  }
+
+  memoryLoad(address: Address | ConstantP, dataType: ScalarCDataType) {
+    switch(address.type) {
+      case "LocalAddress": {
+        const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.basePointer.value) + address.offset.value;
+        const value = this.memory.load(writeAddress, dataType);
+        const [ _, newRuntime ] = this.popValue();
+
+        return newRuntime.pushValue(value);
+      }
+
+      case "DataSegmentAddress": {
+        const writeAddress = address.offset.value;
+        return this.pushValue(this.memory.load(writeAddress, dataType));
+      }
+      
+      case "IntegerConstant": {
+        const writeAddress = address.value
+        return this.pushValue(this.memory.load(writeAddress, dataType));
+      }
+      
+      case "ReturnObjectAddress": {
+        if(address.subtype === "load") {
+          throw new Error("Return object load instruction found in memory write")
+        }
+        const writeAddress = address.offset.value;
+        return this.pushValue(this.memory.load(writeAddress, dataType));
+      }
+
+      case "DynamicAddress": {
+        throw new Error("Dynamic address should not be processed in memory write");
+      }
+
+      case "FunctionTableIndex": {
+        // TODO: Figur out later
+        throw new Error("Havent implemented")
+      }
+
+      case "FloatConstant": {
+        throw new Error("Cannot access an address whose value is a float");
+      }
+
+    }
   }
 
   // function to push general instruction/CNodeP onto the control
@@ -115,7 +191,7 @@ export class Runtime {
     );
   }
   
-  pushValue(value: ConstantP): Runtime {
+  pushValue(value: StashItem): Runtime {
     return new Runtime(
       this.control,
       this.stash.push(value),
@@ -125,11 +201,9 @@ export class Runtime {
   
   popValue(): [StashItem, Runtime] {
     const [value, newStash] = this.stash.pop();
-    
-    if (value === undefined) {
-      throw new Error("Stack is empty and cannot be popped")
+    if(value === undefined) {
+      throw new Error("Undefined poped stash value");
     }
-    
     return [
       value, 
       new Runtime(
@@ -167,6 +241,8 @@ export class Runtime {
     }
     
     result += "\n-----------------------------";
+    result += this.memory.getFormattedMemoryView();
+
     return result;
   }
 }
