@@ -59,8 +59,6 @@ export class Runtime {
   }
   
   private evaluateNode(node: CNodeP): Runtime {
-    console.log("Current instruction");
-    console.log(node);
     const evaluator = NodeEvaluator[node.type];
     if (evaluator) {
       const result = evaluator(this, node as any);
@@ -127,15 +125,9 @@ export class Runtime {
   }
 
   memoryLoad(address: Address | ConstantP, dataType: ScalarCDataType) {
-    console.log("RUNTIME LOAD");
-    console.log(address);
-    console.log(dataType);
-
     switch(address.type) {
       case "LocalAddress": {
         const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.basePointer.value) + address.offset.value;
-        console.log("ASD");
-        console.log(writeAddress);
         const value = this.memory.load(writeAddress, dataType);
         const [ _, newRuntime ] = this.popValue();
 

@@ -80,11 +80,6 @@ export class Memory {
     const size = primaryDataTypeSizes[datatype];
     this.checkOutOfBounds(address, BigInt(size));
     
-    console.log("MEMORY LOAD INVOKED");
-    console.log(address)
-    console.log(datatype);
-    console.log(size);
-
     let view = new Uint8Array(this.memory.buffer);
     if(isIntegerType(datatype)) {
       datatype as IntegerDataType;
@@ -114,16 +109,16 @@ export class Memory {
       datatype as FloatDataType;
 
       let view = new Uint8Array(this.memory.buffer);
-      const buffer = view.slice(Number(address), Number(address) + size)
-      const floatValue = datatype === "float" ? new Float32Array(buffer)[0] : new Float64Array(buffer)[0];
+      const raw = view.slice(Number(address), Number(address) + size)
+      const floatValue = datatype === "float" 
+                            ? new Float32Array(raw.buffer, raw.byteOffset)[0] 
+                            : new Float64Array(raw.buffer, raw.byteOffset)[0];
       
       const res : ConstantP = {
         type: "FloatConstant",
         value: floatValue,
         dataType: datatype,
       }       
-      console.log("MEMORY LOADED");
-      console.log(res);
       return res;
 
     } else {

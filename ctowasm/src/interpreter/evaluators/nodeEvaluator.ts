@@ -142,9 +142,6 @@ export const NodeEvaluator: {
   },
 
   MemoryLoad: (runtime: Runtime, node: MemoryLoad): Runtime => {
-    console.log("MEMORYLOAD 1");
-    console.log(node);
-
     const newRuntime = runtime.push([
       node.address,
       memoryLoadInstruction(node.dataType)
