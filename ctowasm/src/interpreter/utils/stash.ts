@@ -2,7 +2,6 @@ import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { Stack } from "./stack";
 import { Address } from "~src/processor/c-ast/memory";
 
-// TO FIX: define the types
 export type StashItem = ConstantP | Address;
 
 export class Stash extends Stack<StashItem, Stash> {
@@ -21,39 +20,9 @@ export class Stash extends Stack<StashItem, Stash> {
     for (let i = stashItems.length - 1; i >= 0; i--) {
       const item = stashItems[i];
       const itemPosition = stashItems.length - i;
-      result += `  ${itemPosition}. ${this.formatStashItem(item)}\n`;
+      result += `  ${itemPosition}. ${item.value}\n`;
     }
     
     return result.trimEnd();
-  }
-
-  private formatStashItem(item: StashItem): string {
-    if (item === null) return "null";
-    if (item === undefined) return "undefined";
-    
-    if(item.type === "IntegerConstant" || item.type === "FloatConstant") {
-      return item.value.toString();
-    }
-
-    if(item.dataType === "pointer") {
-      return "Pointer: ";
-    } 
-    
-    if (typeof item === "string") {
-      return `"${item}"`;
-    }
-    
-    // if (Array.isArray(item)) {
-    //   return `Array(${item.length})`;
-    // }
-    
-    // if (typeof item === "object") {
-    //   if (item.hasOwnProperty("type") && typeof item.type === "string") {
-    //     return `Object(${item.type})`;
-    //   }
-    //   return `Object: ${JSON.stringify(item).substring(0, 50)}${JSON.stringify(item).length > 50 ? '...' : ''}`;
-    // }
-    
-    return String(item);
   }
 }

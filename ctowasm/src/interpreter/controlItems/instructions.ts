@@ -1,4 +1,4 @@
-import { ScalarCDataType } from "~src/common/types";
+import { BinaryOperator, ScalarCDataType } from "~src/common/types";
 import { CNodeP } from "~src/processor/c-ast/core";
 import { Address } from "~src/processor/c-ast/memory";
 
@@ -20,12 +20,14 @@ export interface BaseInstruction {
 
 export interface BinaryOpInstruction extends BaseInstruction {
   type: InstructionType.BINARY_OP;
-  operator: string;
+  operator: BinaryOperator;
+  dataType: ScalarCDataType;
 }
 
-export const binaryOpInstruction = (operator: string): BinaryOpInstruction => ({
+export const binaryOpInstruction = (operator: BinaryOperator, dataType: ScalarCDataType): BinaryOpInstruction => ({
   type: InstructionType.BINARY_OP,
   operator,
+  dataType,
 });
 
 export interface UnaryOpInstruction extends BaseInstruction {
@@ -40,11 +42,11 @@ export const unaryOpInstruction = (operator: string): UnaryOpInstruction => ({
 
 export interface branchOpInstruction extends BaseInstruction {
   type: InstructionType.BRANCH;
-  trueExpr: CNodeP;
-  falseExpr: CNodeP;
+  trueExpr: CNodeP[];
+  falseExpr: CNodeP[];
 }
 
-export const branchOpInstruction = (trueExpr: CNodeP, falseExpr: CNodeP): branchOpInstruction => ({
+export const branchOpInstruction = (trueExpr: CNodeP[], falseExpr: CNodeP[]): branchOpInstruction => ({
   type: InstructionType.BRANCH,
   trueExpr,
   falseExpr,

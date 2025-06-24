@@ -85,9 +85,17 @@ export function performUnaryOperation(a: any, operator: UnaryOperator) {
       return a - 1;
     // Prefix Operators
     case "!":
-      return a === 0 ? 1 : 0;
+      if (typeof a === 'bigint') {
+        return a === 0n ? 1n : 0n;
+      } else {
+        return a === 0 ? 1 : 0;
+      }
     case "~":
-      return ~a;
+      if (typeof a === 'bigint') {
+        return ~a;
+      } else {
+        throw new Error("Bitwise NOT (~) operator can only be applied to integer types");
+      }
     case "-":
       return -a;
     case "+":

@@ -1,6 +1,5 @@
 import { CAstRootP } from "~src/processor/c-ast/core";
 import { Runtime } from "~src/interpreter/runtime";
-import { FunctionCallP } from "~src/processor/c-ast/function";
 import { Control } from "./utils/control";
 
 export class Interpreter {
@@ -16,8 +15,6 @@ export class Interpreter {
 
   interpret(): void {
     Runtime.astRootP = this.astRootNode;
-    console.log("HERE");
-    console.log(this.astRootNode);
     const mainFunction = Runtime.astRootP.functions.find(x => x.name === "main");
 
     if(!mainFunction) {

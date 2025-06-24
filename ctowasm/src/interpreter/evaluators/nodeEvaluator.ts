@@ -5,6 +5,7 @@ import {
   InstructionType, 
   memoryLoadInstruction, 
   memoryStoreInstruction, 
+  assignmentInstruction, 
   popInstruction, 
   unaryOpInstruction 
 } from "~src/interpreter/controlItems/instructions";
@@ -41,12 +42,6 @@ export const NodeEvaluator: {
     runtime: Runtime, 
     node: Extract<CNodeP, { type: Type }>) => Runtime 
 } = {
-
-  /**
-   * TODO:
-   * 1. Creation of statements from expressions (i think this would be the best way)
-   */
-
   // ========== STATEMENTS ==========
 
   ExpressionStatement: (runtime: Runtime, node: ExpressionStatementP): Runtime => {
@@ -54,9 +49,15 @@ export const NodeEvaluator: {
     return runtimeWithPop.pushNode([node.expr]);
   },
 
-  // TODO
   SelectionStatement: (runtime: Runtime, node: SelectionStatementP): Runtime => {
-    return new Runtime();
+    const runtimeWithPushedInstruction = runtime.pushInstruction([
+      branchOpInstruction(
+        node.ifStatements,
+        node.elseStatements ?? [],
+      )
+    ])
+    
+    return runtimeWithPushedInstruction.pushNode([node.condition]);
   },
 
   // === ITERATION STATEMENTS ===
@@ -115,6 +116,12 @@ export const NodeEvaluator: {
     return runtime.pushValue(node);
   },
 
+  // TODO
+  MemoryLoad: (runtime: Runtime, node: MemoryLoad): Runtime => {
+    return new Runtime();
+  },
+
+  // TODO
   FunctionCall: (runtime: Runtime, node: FunctionCallP): Runtime => {
     return new Runtime();
   },
@@ -130,7 +137,7 @@ export const NodeEvaluator: {
   },
 
   BinaryExpression: (runtime: Runtime, node: BinaryExpressionP): Runtime => {    
-    const runtimeWithInstruction = runtime.pushInstruction([binaryOpInstruction(node.operator)]);
+    const runtimeWithInstruction = runtime.pushInstruction([binaryOpInstruction(node.operator, node.dataType)]);
     const runtimeWithRight = runtimeWithInstruction.pushNode([node.rightExpr]);
     
     return runtimeWithRight.pushNode([node.leftExpr]);
@@ -161,7 +168,7 @@ export const NodeEvaluator: {
   },
 
   ConditionalExpression: (runtime: Runtime, node: ConditionalExpressionP): Runtime => {
-    const runtimeWithInstruction = runtime.pushInstruction([branchOpInstruction(node.trueExpression, node.falseExpression)]);
+    const runtimeWithInstruction = runtime.pushInstruction([branchOpInstruction([node.trueExpression], [node.falseExpression])]);
     return runtimeWithInstruction.pushNode([node.condition]);
   }
 };

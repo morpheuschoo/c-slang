@@ -1,11 +1,10 @@
 import { ControlItem, Control } from "~src/interpreter/utils/control";
-import { Stash, StashItem } from "~src/interpreter/utils/stash";
+import { StashItem, Stash} from "~src/interpreter/utils/stash";
 import { CAstRootP, CNodeP } from "~src/processor/c-ast/core";
 import { Instruction, isInstruction } from "~src/interpreter/controlItems/instructions";
 import { NodeEvaluator } from "~src/interpreter/evaluators/nodeEvaluator";
 import { InstructionEvaluator } from "~src/interpreter/evaluators/instructionEvaluator";
 import { FunctionDefinitionP } from "~src/processor/c-ast/function";
-import { FunctionTable } from "~src/processor/symbolTable";
 import { Memory } from "./memory";
 import { ScalarCDataType } from "~src/common/types";
 import { Address, MemoryLoad } from "~src/processor/c-ast/memory";
@@ -17,7 +16,6 @@ export class Runtime {
   private readonly stash: Stash;
   private readonly memory: Memory;
   
-  // To be removed and use FunctionTable provided in CAstRootP
   public static astRootP: CAstRootP;
 
   constructor(
@@ -64,7 +62,7 @@ export class Runtime {
       const result = evaluator(this, node as any);
       return result;
     } else {
-      throw new Error("Unknown node type");
+      throw new Error(`Unknown node type ${node.type}`);
     }
   }
 
@@ -206,7 +204,6 @@ export class Runtime {
     if(value === undefined) {
       throw new Error("Undefined poped stash value");
     }
-
     return [
       value, 
       new Runtime(
