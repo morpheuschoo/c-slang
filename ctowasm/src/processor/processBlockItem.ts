@@ -286,8 +286,15 @@ export default function processBlockItem(
         return getArithmeticPrePostfixExpressionNodes(node, symbolTable)
           .storeNodes;
       } else {
-        processExpression(node, symbolTable, enclosingFunc);
-        return [];
+        // NOTE: commented out to disable removal of "redundant" statements
+        // processExpression(node, symbolTable, enclosingFunc);
+        // return [];
+        const processed = processExpression(node, symbolTable, enclosingFunc);
+
+        return [{
+          type: "ExpressionStatement",
+          expr: processed.exprs[0]
+        }];
       }
     } else if (node.type === "CommaSeparatedExpressions") {
       const processedExpressions: StatementP[] = [];
