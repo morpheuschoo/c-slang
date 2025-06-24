@@ -32,22 +32,20 @@ export const binaryOpInstruction = (operator: BinaryOperator, dataType: ScalarCD
 export interface UnaryOpInstruction extends BaseInstruction {
   type: InstructionType.UNARY_OP;
   operator: string;
-  dataType: ScalarCDataType;
 }
 
-export const unaryOpInstruction = (operator: string, dataType: ScalarCDataType): UnaryOpInstruction => ({
+export const unaryOpInstruction = (operator: string): UnaryOpInstruction => ({
   type: InstructionType.UNARY_OP,
   operator,
-  dataType,
 });
 
 export interface branchOpInstruction extends BaseInstruction {
   type: InstructionType.BRANCH;
-  trueExpr: CNodeP;
-  falseExpr: CNodeP;
+  trueExpr: CNodeP[];
+  falseExpr: CNodeP[];
 }
 
-export const branchOpInstruction = (trueExpr: CNodeP, falseExpr: CNodeP): branchOpInstruction => ({
+export const branchOpInstruction = (trueExpr: CNodeP[], falseExpr: CNodeP[]): branchOpInstruction => ({
   type: InstructionType.BRANCH,
   trueExpr,
   falseExpr,

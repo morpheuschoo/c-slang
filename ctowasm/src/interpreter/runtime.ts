@@ -16,7 +16,6 @@ export class Runtime {
   private readonly stash: Stash;
   private readonly memory: Memory;
   
-  // To be removed and use FunctionTable provided in CAstRootP
   public static astRootP: CAstRootP;
 
   constructor(
@@ -63,7 +62,7 @@ export class Runtime {
       const result = evaluator(this, node as any);
       return result;
     } else {
-      throw new Error("Unknown node type");
+      throw new Error(`Unknown node type ${node.type}`);
     }
   }
 

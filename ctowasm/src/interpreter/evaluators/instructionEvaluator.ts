@@ -24,17 +24,12 @@ export const InstructionEvaluator: {
 
     /**
      * Bottom evaluation is same as in ~src\processor\evaluateCompileTimeExpression.ts
-     * 
-     * NOTE: Only works for "-", need support for "~" | "!" | "+" | "++" | "--"
+     * performUnaryOperation has been fixed to support "!" and "~"
      */
     const dataType = operand.dataType;
-    console.log(operand.value);
-    console.log(instruction.operator);
 
-    // performUnaryOperation does not work for "~" | "!" as need to check whether data is an integer
     let value = performUnaryOperation(operand.value, instruction.operator as UnaryOperator);
     if (isIntegerType(dataType)) {
-      console.log(value);
       value = getAdjustedIntValueAccordingToDataType(value as bigint, dataType);
 
       return runtimeAfterPop.pushValue({
@@ -102,9 +97,9 @@ export const InstructionEvaluator: {
     const isTrue = Boolean(condition);
     
     if (isTrue) {
-      return runtime.pushNode([instruction.trueExpr]);
+      return runtimeWithPoppedValue.pushNode(instruction.trueExpr);
     }
-    return runtime.pushNode([instruction.falseExpr]);
+    return runtimeWithPoppedValue.pushNode(instruction.falseExpr);
   },
 
   [InstructionType.ASSIGNMENT]: (runtime: Runtime, instruction: AssignmentInstruction): Runtime => {

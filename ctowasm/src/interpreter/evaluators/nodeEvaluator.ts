@@ -1,9 +1,8 @@
 import { Runtime } from "~src/interpreter/runtime";
-import { AssignmentInstruction, 
+import { 
   assignmentInstruction, 
   binaryOpInstruction, 
   branchOpInstruction, 
-  InstructionType, 
   popInstruction, 
   unaryOpInstruction 
 } from "~src/interpreter/controlItems/instructions";
@@ -20,8 +19,8 @@ import {
   PostStatementExpressionP,
   ConditionalExpressionP,
 } from "~src/processor/c-ast/expression/expressions";
-import { MemoryStore } from "~src/processor/c-ast/memory";
-import { FunctionCallP, FunctionDefinitionP } from "~src/processor/c-ast/function";
+import { MemoryLoad, MemoryStore } from "~src/processor/c-ast/memory";
+import { FunctionCallP } from "~src/processor/c-ast/function";
 import { 
   BreakStatementP, 
   ContinueStatementP, 
@@ -40,12 +39,6 @@ export const NodeEvaluator: {
     runtime: Runtime, 
     node: Extract<CNodeP, { type: Type }>) => Runtime 
 } = {
-
-  /**
-   * TODO:
-   * 1. Creation of statements from expressions (i think this would be the best way)
-   */
-
   // ========== STATEMENTS ==========
 
   ExpressionStatement: (runtime: Runtime, node: ExpressionStatementP): Runtime => {
@@ -53,9 +46,15 @@ export const NodeEvaluator: {
     return runtimeWithPop.pushNode([node.expr]);
   },
 
-  // TODO
   SelectionStatement: (runtime: Runtime, node: SelectionStatementP): Runtime => {
-    return new Runtime();
+    const runtimeWithPushedInstruction = runtime.pushInstruction([
+      branchOpInstruction(
+        node.ifStatements,
+        node.elseStatements ?? [],
+      )
+    ])
+    
+    return runtimeWithPushedInstruction.pushNode([node.condition]);
   },
 
   // === ITERATION STATEMENTS ===
@@ -108,6 +107,12 @@ export const NodeEvaluator: {
     return newRuntime;
   },
 
+  // TODO
+  MemoryLoad: (runtime: Runtime, node: MemoryLoad): Runtime => {
+    return new Runtime();
+  },
+
+  // TODO
   FunctionCall: (runtime: Runtime, node: FunctionCallP): Runtime => {
     return new Runtime();
   },
@@ -130,7 +135,7 @@ export const NodeEvaluator: {
   },
 
   UnaryExpression: (runtime: Runtime, node: UnaryExpressionP): Runtime => {
-    const runtimeWithInstruction = runtime.pushInstruction([unaryOpInstruction(node.operator, node.dataType)]);
+    const runtimeWithInstruction = runtime.pushInstruction([unaryOpInstruction(node.operator)]);
     return runtimeWithInstruction.pushNode([node.expr]);
   },
 
@@ -145,7 +150,7 @@ export const NodeEvaluator: {
   },
 
   ConditionalExpression: (runtime: Runtime, node: ConditionalExpressionP): Runtime => {
-    const runtimeWithInstruction = runtime.pushInstruction([branchOpInstruction(node.trueExpression, node.falseExpression)]);
+    const runtimeWithInstruction = runtime.pushInstruction([branchOpInstruction([node.trueExpression], [node.falseExpression])]);
     return runtimeWithInstruction.pushNode([node.condition]);
   }
 };
