@@ -1,11 +1,10 @@
 import { ControlItem, Control } from "~src/interpreter/utils/control";
-import { Stash } from "~src/interpreter/utils/stash";
+import { StashItem, Stash} from "~src/interpreter/utils/stash";
 import { CAstRootP, CNodeP } from "~src/processor/c-ast/core";
 import { Instruction, isInstruction } from "~src/interpreter/controlItems/instructions";
 import { NodeEvaluator } from "~src/interpreter/evaluators/nodeEvaluator";
 import { InstructionEvaluator } from "~src/interpreter/evaluators/instructionEvaluator";
 import { FunctionDefinitionP } from "~src/processor/c-ast/function";
-import { FunctionTable } from "~src/processor/symbolTable";
 import { Memory } from "./memory";
 import { ScalarCDataType } from "~src/common/types";
 import { Address } from "~src/processor/c-ast/memory";
@@ -125,8 +124,13 @@ export class Runtime {
     );
   }
   
-  popValue(): [any, Runtime] {
+  popValue(): [StashItem, Runtime] {
     const [value, newStash] = this.stash.pop();
+    
+    if (value === undefined) {
+      throw new Error("Stack is empty and cannot be popped")
+    }
+    
     return [
       value, 
       new Runtime(

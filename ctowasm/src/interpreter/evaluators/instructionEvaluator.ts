@@ -8,6 +8,11 @@ import {
   popInstruction,
   AssignmentInstruction,
  } from "~src/interpreter/controlItems/instructions";
+import { performBinaryOperation, performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
+import { determineResultDataTypeOfBinaryExpression } from "~src/processor/expressionUtil";
+import { isIntegerType } from "~src/common/utils";
+import { getAdjustedIntValueAccordingToDataType } from "~src/processor/processConstant";
+import { FloatDataType, IntegerDataType, UnaryOperator } from "~src/common/types";
 
 export const InstructionEvaluator: {
   [InstrType in Instruction["type"]]: (
@@ -16,50 +21,75 @@ export const InstructionEvaluator: {
 } = {
   [InstructionType.UNARY_OP]: (runtime: Runtime, instruction: UnaryOpInstruction): Runtime => {
     const [operand, runtimeAfterPop] = runtime.popValue();
-    let result;
-    
-    switch (instruction.operator) {
-      case '-': result = -operand; break;
-      case '!': result = !operand ? 1 : 0; break; 
-      case '+': result = +operand; break;
 
-      // TODO
-      case '~': result = ~operand; break;
-      case '++': result = operand + 1; break; // Pre-increment
-      case '--': result = operand - 1; break; // Pre-decrement
-      case '&': result = operand; /* Address-of operator, simplified */ break;
-      case '*': result = operand; /* Dereference operator, simplified */ break;
-      default:
-        console.warn(`Unknown unary operator: ${instruction.operator}`);
-        result = null;
+    /**
+     * Bottom evaluation is same as in ~src\processor\evaluateCompileTimeExpression.ts
+     * 
+     * NOTE: Only works for "-" | "~" | "!", need support for "+" | "++" | "--"
+     */
+    const dataType = operand.dataType;
+    let value = performUnaryOperation(operand.value, instruction.operator as UnaryOperator);
+    if (isIntegerType(dataType)) {
+      value = getAdjustedIntValueAccordingToDataType(value as bigint, dataType);
+
+      return runtimeAfterPop.pushValue({
+        type: "IntegerConstant",
+        dataType: dataType as IntegerDataType,
+        value,
+      });
+    } else {
+      return runtimeAfterPop.pushValue({
+        type: "FloatConstant",
+        dataType: dataType as FloatDataType,
+        value: value as number,
+      });
     }
-
-    return runtimeAfterPop.pushValue(result);
   },
   
   [InstructionType.BINARY_OP]: (runtime: Runtime, instruction: BinaryOpInstruction): Runtime => {
     const [right, runtimeAfterPopRight] = runtime.popValue();
     const [left, runtimeAfterPopLeft] = runtimeAfterPopRight.popValue();
-    
-    let result;
-    switch (instruction.operator) {
-      case '+': result = left + right; break;
-      case '-': result = left - right; break;
-      case '*': result = left * right; break;
-      case '/': result = left / right; break;
-      case '%': result = left % right; break;
-      case '<': result = left < right ? 1 : 0; break;
-      case '>': result = left > right ? 1 : 0; break;
-      case '<=': result = left <= right ? 1 : 0; break;
-      case '>=': result = left >= right ? 1 : 0; break;
-      case '==': result = left === right ? 1 : 0; break;
-      case '!=': result = left !== right ? 1 : 0; break;
-      default: 
-        console.warn(`Unknown binary operator: ${instruction.operator}`);
-        result = null;
+
+    /**
+     * Bottom evaluation is same as in ~src\processor\evaluateCompileTimeExpression.ts
+     * However, it has been fixed
+     * 
+     * NOTE: I think for bitwise operators we need to test it
+     */
+    let value = performBinaryOperation(
+      Number(left.value),
+      instruction.operator,
+      Number(right.value),
+    );
+
+    const dataType = determineResultDataTypeOfBinaryExpression(
+      { type: "primary", primaryDataType: left.dataType },
+      { type: "primary", primaryDataType: right.dataType },
+      instruction.operator,
+    );
+
+    if (dataType.type !== "primary") {
+      throw new Error("invalid expression")
+    };
+
+    if (isIntegerType(dataType.primaryDataType)) {
+      const valueInt = getAdjustedIntValueAccordingToDataType(
+        BigInt(Math.floor(value)),
+        dataType.primaryDataType,
+      );
+
+      return runtimeAfterPopLeft.pushValue({
+        type: "IntegerConstant",
+        dataType: dataType.primaryDataType as IntegerDataType,
+        value: valueInt as bigint,
+      });
     }
 
-    return runtimeAfterPopLeft.pushValue(result);
+    return runtimeAfterPopLeft.pushValue({
+      type: "FloatConstant",
+      dataType: dataType.primaryDataType as FloatDataType,
+      value: value as number,
+    });
   },
 
   [InstructionType.BRANCH]: (runtime: Runtime, instruction: branchOpInstruction): Runtime => {
