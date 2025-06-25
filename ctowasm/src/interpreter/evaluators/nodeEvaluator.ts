@@ -124,13 +124,11 @@ export const NodeEvaluator: {
     return newRuntime
   },
 
-  // TODO
   MemoryStore: (runtime: Runtime, node: MemoryStore): Runtime => {
     const newRuntime = runtime.push([
       node.value, 
       node.address,
       memoryStoreInstruction(node.dataType),
-      popInstruction(),
       popInstruction(),
     ]);
 

@@ -62,7 +62,8 @@ export const popInstruction = (): popInstruction => ({
   type: InstructionType.POP,
 })
 
-// MEMORY
+// ===== MEMORY =====
+
 export interface MemoryStoreInstruction extends BaseInstruction {
   type: InstructionType.MEMORYSTORE;
   dataType: ScalarCDataType;
@@ -80,7 +81,7 @@ export interface MemoryLoadInstruction extends BaseInstruction {
 
 export const memoryLoadInstruction = (dataType: ScalarCDataType): MemoryLoadInstruction => ({
   type: InstructionType.MEMORYLOAD,
-  dataType: dataType,
+  dataType,
 })
 
 export interface WhileLoopInstruction extends BaseInstruction {

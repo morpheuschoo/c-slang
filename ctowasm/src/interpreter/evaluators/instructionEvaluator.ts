@@ -16,7 +16,6 @@ import { isIntegerType } from "~src/common/utils";
 import { getAdjustedIntValueAccordingToDataType } from "~src/processor/processConstant";
 import { FloatDataType, IntegerDataType, UnaryOperator } from "~src/common/types";
 
-
 export const InstructionEvaluator: {
   [InstrType in Instruction["type"]]: (
     runtime: Runtime, 
@@ -121,13 +120,13 @@ export const InstructionEvaluator: {
 
   [InstructionType.MEMORYSTORE]: (runtime: Runtime, instruction: MemoryStoreInstruction): Runtime => {
     const [ address, runtimeAfter ]= runtime.popValue();
-    const [ value, e ] = runtimeAfter.popValue();
+    const [ value, _ ] = runtimeAfter.popValue();
 
     if(value.type !== "IntegerConstant" && value.type !== "FloatConstant") {
       throw new Error("Not implemented yet");
     }
 
-    return runtime.memoryWrite(address, value, instruction.dataType);
+    return runtimeAfter.memoryWrite(address, value, instruction.dataType);
   },
 
   [InstructionType.MEMORYLOAD]: (runtime: Runtime, instruction: MemoryLoadInstruction): Runtime => {
@@ -136,7 +135,7 @@ export const InstructionEvaluator: {
   },
 
   [InstructionType.POP]: (runtime: Runtime, instruction: popInstruction): Runtime => {
-    const [value, runtimeAfterPop] = runtime.popValue();
+    const [_, runtimeAfterPop] = runtime.popValue();
     return runtimeAfterPop;
   },
 

@@ -29,13 +29,11 @@ export class Control extends Stack<ControlItem, Control> {
         } else if (
           item.type === InstructionType.BRANCH ||
           item.type === InstructionType.POP ||
-          item.type === InstructionType.WHILE
+          item.type === InstructionType.WHILE ||
+          item.type === InstructionType.MEMORYLOAD ||
+          item.type === InstructionType.MEMORYSTORE
         ) {
           result += `  ${itemPosition}. [Instruction] ${item.type}\n`;
-        } else if (item.type === InstructionType.MEMORYLOAD) {
-          result += `  ${itemPosition}. [Instruction] ${item.type}: Address(${(item as any).address})\n`;
-        } else if(item.type === InstructionType.MEMORYSTORE) {
-          result += `  ${itemPosition}. [Instruction] ${item.type}: Address(${(item as any).address}), Value(${(item as any).value})\n`;
         }
       } else {
         const nodeItem = item as any;
