@@ -9,8 +9,6 @@ import {
   MemoryLoadInstruction,
   MemoryStoreInstruction,
  } from "~src/interpreter/controlItems/instructions";
-
-import { FloatConstantP } from "~src/processor/c-ast/expression/constants";
 import { performBinaryOperation, performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
 import { determineResultDataTypeOfBinaryExpression } from "~src/processor/expressionUtil";
 import { isIntegerType } from "~src/common/utils";
@@ -26,6 +24,10 @@ export const InstructionEvaluator: {
   [InstructionType.UNARY_OP]: (runtime: Runtime, instruction: UnaryOpInstruction): Runtime => {
     
     const [operand, runtimeAfterPop] = runtime.popValue();
+
+    if(!("value" in operand)) {
+      throw new Error(`Unary operation '${instruction.operator} requires an operand, but stash is empty'`)
+    }
 
     /**
      * Bottom evaluation is same as in ~src\processor\evaluateCompileTimeExpression.ts
@@ -54,6 +56,10 @@ export const InstructionEvaluator: {
   [InstructionType.BINARY_OP]: (runtime: Runtime, instruction: BinaryOpInstruction): Runtime => {
     const [right, runtimeAfterPopRight] = runtime.popValue();
     const [left, runtimeAfterPopLeft] = runtimeAfterPopRight.popValue();
+
+    if(!("value" in left) || !("value" in right)) {
+      throw new Error(`Unary operation '${instruction.operator} requires an operand, but stash is empty'`)
+    }
 
     /**
      * Bottom evaluation is same as in ~src\processor\evaluateCompileTimeExpression.ts
@@ -99,7 +105,12 @@ export const InstructionEvaluator: {
 
   [InstructionType.BRANCH]: (runtime: Runtime, instruction: branchOpInstruction): Runtime => {
     const [condition, runtimeWithPoppedValue] = runtime.popValue();
-    const isTrue = Boolean(condition);
+    
+    if (!("value" in condition)) {
+      throw new Error("Branch instruction expects a boolean")
+    }
+    
+    const isTrue: boolean = condition.value === 1n ? true : false;
     
     if (isTrue) {
       return runtimeWithPoppedValue.pushNode(instruction.trueExpr);

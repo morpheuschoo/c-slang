@@ -2,10 +2,8 @@ import { Runtime } from "~src/interpreter/runtime";
 import {  
   binaryOpInstruction, 
   branchOpInstruction, 
-  InstructionType, 
   memoryLoadInstruction, 
-  memoryStoreInstruction, 
-  assignmentInstruction, 
+  memoryStoreInstruction,  
   popInstruction, 
   unaryOpInstruction 
 } from "~src/interpreter/controlItems/instructions";
@@ -22,7 +20,7 @@ import {
   PostStatementExpressionP,
   ConditionalExpressionP,
 } from "~src/processor/c-ast/expression/expressions";
-import { Address, LocalAddress, MemoryLoad, MemoryStore } from "~src/processor/c-ast/memory";
+import { Address, LocalAddress, MemoryLoad, MemoryStore, ReturnObjectAddress } from "~src/processor/c-ast/memory";
 import { FunctionCallP, FunctionDefinitionP } from "~src/processor/c-ast/function";
 import { 
   BreakStatementP, 
@@ -99,6 +97,28 @@ export const NodeEvaluator: {
     return new Runtime();
   },
 
+  LocalAddress: (runtime: Runtime, node: LocalAddress): Runtime => {
+    return runtime.pushValue(node);
+  },
+
+  // ========== MEMORY ==========
+
+  // TODO
+  ReturnObjectAddress: (runtime: Runtime, node: ReturnObjectAddress): Runtime => {
+    // One for load
+    // One for store
+    return new Runtime();
+  },
+
+  MemoryLoad: (runtime: Runtime, node: MemoryLoad): Runtime => {
+    const newRuntime = runtime.push([
+      node.address,
+      memoryLoadInstruction(node.dataType)
+    ])
+
+    return newRuntime
+  },
+
   // TODO
   MemoryStore: (runtime: Runtime, node: MemoryStore): Runtime => {
     const newRuntime = runtime.push([
@@ -110,15 +130,6 @@ export const NodeEvaluator: {
     ]);
 
     return newRuntime;
-  },
-
-  LocalAddress: (runtime: Runtime, node: LocalAddress): Runtime => {
-    return runtime.pushValue(node);
-  },
-
-  // TODO
-  MemoryLoad: (runtime: Runtime, node: MemoryLoad): Runtime => {
-    return new Runtime();
   },
 
   // TODO
@@ -146,15 +157,6 @@ export const NodeEvaluator: {
   UnaryExpression: (runtime: Runtime, node: UnaryExpressionP): Runtime => {
     const runtimeWithInstruction = runtime.pushInstruction([unaryOpInstruction(node.operator)]);
     return runtimeWithInstruction.pushNode([node.expr]);
-  },
-
-  MemoryLoad: (runtime: Runtime, node: MemoryLoad): Runtime => {
-    const newRuntime = runtime.push([
-      node.address,
-      memoryLoadInstruction(node.dataType)
-    ])
-
-    return newRuntime
   },
 
   // TODO

@@ -20,9 +20,33 @@ export class Stash extends Stack<StashItem, Stash> {
     for (let i = stashItems.length - 1; i >= 0; i--) {
       const item = stashItems[i];
       const itemPosition = stashItems.length - i;
-      result += `  ${itemPosition}. ${item.value}\n`;
+      let displayValue = "";
+      
+      switch (item.type) {
+        case "IntegerConstant":
+        case "FloatConstant":
+          displayValue = `${item.value}`;
+          break;
+        case "LocalAddress":
+          displayValue = `LocalAddress(offset: ${item.offset.value})`;
+          break;
+        case "DataSegmentAddress":
+          displayValue = `DataSegmentAddress(offset: ${item.offset.value})`;
+          break;
+        case "DynamicAddress":
+          displayValue = `DynamicAddress(${item.address.type})`;
+          break;
+        case "FunctionTableIndex":
+          displayValue = `FunctionTableIndex(${item.index.value})`;
+          break;
+        case "ReturnObjectAddress":
+          displayValue = `ReturnObjectAddress(${item.subtype}, offset: ${item.offset.value})`;
+          break;
+        default:
+          break;
+      }
+      result += `  ${itemPosition}. ${displayValue}\n`;
     }
-    
     return result.trimEnd();
   }
 }
