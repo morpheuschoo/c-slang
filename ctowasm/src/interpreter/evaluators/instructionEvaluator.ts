@@ -8,6 +8,7 @@ import {
   popInstruction,
   MemoryLoadInstruction,
   MemoryStoreInstruction,
+  WhileLoopInstruction,
  } from "~src/interpreter/controlItems/instructions";
 import { performBinaryOperation, performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
 import { determineResultDataTypeOfBinaryExpression } from "~src/processor/expressionUtil";
@@ -137,5 +138,24 @@ export const InstructionEvaluator: {
   [InstructionType.POP]: (runtime: Runtime, instruction: popInstruction): Runtime => {
     const [value, runtimeAfterPop] = runtime.popValue();
     return runtimeAfterPop;
+  },
+
+  [InstructionType.WHILE]: (runtime: Runtime, instruction: WhileLoopInstruction): Runtime => {
+    const [condition, runtimeWithPoppedValue] = runtime.popValue();
+
+    if (!("value" in condition)) {
+      throw new Error("While instruction expects a boolean")
+    }
+    
+    const isTrue: boolean = condition.value === 1n ? true : false;
+
+    if(!isTrue) {
+      return runtimeWithPoppedValue;
+    }
+    return runtimeWithPoppedValue.push([
+      instruction.condition,
+      instruction
+    ]).push(instruction.body);
+
   }
 };
