@@ -5,7 +5,8 @@ import {
   memoryLoadInstruction, 
   memoryStoreInstruction,  
   popInstruction, 
-  unaryOpInstruction 
+  unaryOpInstruction ,
+  whileLoopInstruction,
 } from "~src/interpreter/controlItems/instructions";
 import { CNodeType } from "~src/interpreter/controlItems/types";
 import { CNodeP } from "~src/processor/c-ast/core";
@@ -60,14 +61,18 @@ export const NodeEvaluator: {
 
   // === ITERATION STATEMENTS ===
 
-  // TODO
   DoWhileLoop: (runtime: Runtime, node: DoWhileLoopP): Runtime => {
-    return new Runtime();
+    return runtime.push([
+      node.condition,
+      whileLoopInstruction(node.condition, node.body),
+    ]).push(node.body)
   },
 
-  // TODO
   WhileLoop: (runtime: Runtime, node: WhileLoopP): Runtime => {
-    return new Runtime();
+    return runtime.push([
+      node.condition,
+      whileLoopInstruction(node.condition, node.body),
+    ]);
   },
 
   // TODO

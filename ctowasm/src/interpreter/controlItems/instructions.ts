@@ -1,5 +1,6 @@
 import { BinaryOperator, ScalarCDataType } from "~src/common/types";
-import { CNodeP } from "~src/processor/c-ast/core";
+import { CNodeP, ExpressionP } from "~src/processor/c-ast/core";
+import { BinaryExpressionP } from "~src/processor/c-ast/expression/expressions";
 import { Address } from "~src/processor/c-ast/memory";
 
 /**
@@ -11,7 +12,8 @@ export enum InstructionType {
   BRANCH = "BRANCH",
   POP = "POP",
   MEMORYSTORE = "MEMORYSTORE",
-  MEMORYLOAD = "MEMORYLOAD"
+  MEMORYLOAD = "MEMORYLOAD",
+  WHILE = "WHILE",
 }
 
 export interface BaseInstruction {
@@ -81,13 +83,26 @@ export const memoryLoadInstruction = (dataType: ScalarCDataType): MemoryLoadInst
   dataType: dataType,
 })
 
+export interface WhileLoopInstruction extends BaseInstruction {
+  type: InstructionType.WHILE;
+  condition: ExpressionP;
+  body: CNodeP[];
+}
+
+export const whileLoopInstruction = (condition: ExpressionP, body: CNodeP[]): WhileLoopInstruction => ({
+  type: InstructionType.WHILE,
+  condition,
+  body,
+})
+
 export type Instruction = 
   | BinaryOpInstruction
   | UnaryOpInstruction
   | branchOpInstruction
   | popInstruction
   | MemoryStoreInstruction
-  | MemoryLoadInstruction;
+  | MemoryLoadInstruction
+  | WhileLoopInstruction;
 
 export const isInstruction = (item: any): item is Instruction => {
   return item && typeof item === 'object' && 'type' in item && 

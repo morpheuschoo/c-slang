@@ -28,7 +28,8 @@ export class Control extends Stack<ControlItem, Control> {
           result += `  ${itemPosition}. [Instruction] ${item.type}: '${(item as any).operator}'\n`;
         } else if (
           item.type === InstructionType.BRANCH ||
-          item.type === InstructionType.POP
+          item.type === InstructionType.POP ||
+          item.type === InstructionType.WHILE
         ) {
           result += `  ${itemPosition}. [Instruction] ${item.type}\n`;
         } else if (item.type === InstructionType.MEMORYLOAD) {
