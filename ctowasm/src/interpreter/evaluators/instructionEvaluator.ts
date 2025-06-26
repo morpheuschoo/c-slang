@@ -9,6 +9,7 @@ import {
   MemoryLoadInstruction,
   MemoryStoreInstruction,
   WhileLoopInstruction,
+  BreakMarkInstruction,
  } from "~src/interpreter/controlItems/instructions";
 import { performBinaryOperation, performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
 import { determineResultDataTypeOfBinaryExpression } from "~src/processor/expressionUtil";
@@ -118,7 +119,7 @@ export const InstructionEvaluator: {
     return runtimeWithPoppedValue.pushNode(instruction.falseExpr);
   },
 
-  [InstructionType.MEMORYSTORE]: (runtime: Runtime, instruction: MemoryStoreInstruction): Runtime => {
+  [InstructionType.MEMORY_STORE]: (runtime: Runtime, instruction: MemoryStoreInstruction): Runtime => {
     const [ address, runtimeAfter ]= runtime.popValue();
     const [ value, _ ] = runtimeAfter.popValue();
 
@@ -129,7 +130,7 @@ export const InstructionEvaluator: {
     return runtimeAfter.memoryWrite(address, value, instruction.dataType);
   },
 
-  [InstructionType.MEMORYLOAD]: (runtime: Runtime, instruction: MemoryLoadInstruction): Runtime => {
+  [InstructionType.MEMORY_LOAD]: (runtime: Runtime, instruction: MemoryLoadInstruction): Runtime => {
     const [ address, _ ] = runtime.popValue();
     return runtime.memoryLoad(address, instruction.dataType);
   },
@@ -156,5 +157,9 @@ export const InstructionEvaluator: {
       instruction
     ]).push(instruction.body);
 
+  },
+
+  [InstructionType.BREAK_MARK]: (runtime: Runtime, instruction: BreakMarkInstruction): Runtime => {
+    return runtime;
   }
 };

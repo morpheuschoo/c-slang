@@ -2,6 +2,8 @@ import { Runtime } from "~src/interpreter/runtime";
 import {  
   binaryOpInstruction, 
   branchOpInstruction, 
+  breakMarkInstruction, 
+  isBreakMarkInstruction, 
   memoryLoadInstruction, 
   memoryStoreInstruction,  
   popInstruction, 
@@ -35,6 +37,7 @@ import {
   ForLoopP,
 } from "~src/processor/c-ast/statement/iterationStatement";
 import { ExpressionStatementP } from "~src/processor/c-ast/statement/expressionStatement";
+import { containsBreakStatement } from "~src/interpreter/utils/jumpStatementChecking";
 
 export const NodeEvaluator: { 
   [Type in CNodeType]?: (
@@ -62,14 +65,24 @@ export const NodeEvaluator: {
   // === ITERATION STATEMENTS ===
 
   DoWhileLoop: (runtime: Runtime, node: DoWhileLoopP): Runtime => {
-    return runtime.push([
+    let pRuntime = runtime;
+    if (containsBreakStatement(node.body)) {
+      pRuntime = runtime.push([breakMarkInstruction()]);
+    }
+    
+    return pRuntime.push([
       node.condition,
       whileLoopInstruction(node.condition, node.body),
     ]).push(node.body)
   },
 
   WhileLoop: (runtime: Runtime, node: WhileLoopP): Runtime => {
-    return runtime.push([
+    let pRuntime = runtime;
+    if (containsBreakStatement(node.body)) {
+      pRuntime = runtime.push([breakMarkInstruction()]);
+    }
+    
+    return pRuntime.push([
       node.condition,
       whileLoopInstruction(node.condition, node.body),
     ]);
@@ -87,9 +100,25 @@ export const NodeEvaluator: {
     return runtime;
   },
 
-  // TODO
   BreakStatement: (runtime: Runtime, node: BreakStatementP): Runtime => {
-    return new Runtime();
+    let currRuntime = runtime;
+    let foundBreakMark = false;
+
+    while (!currRuntime.isControlEmpty()) {
+      const [item, newRuntime] = currRuntime.popNode();
+      currRuntime = newRuntime;
+
+      if (isBreakMarkInstruction(item)) {
+        foundBreakMark = true;
+        break;
+      }
+    }
+    
+    if (!foundBreakMark) {
+      throw new Error("Unable to locate break statement");
+    }
+
+    return currRuntime;
   },
 
   // TODO
@@ -97,8 +126,11 @@ export const NodeEvaluator: {
     return new Runtime();
   },
 
-  // TODO
+  /**
+   * https://stackoverflow.com/questions/68406541/how-cases-get-evaluated-in-switch-statements-c
+   */
   SwitchStatement: (runtime: Runtime, node: SwitchStatementP): Runtime => {
+    
     return new Runtime();
   },
 
