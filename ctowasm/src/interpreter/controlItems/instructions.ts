@@ -14,6 +14,8 @@ export enum InstructionType {
   MEMORY_LOAD = "MEMORY_LOAD",
   WHILE = "WHILE",
   BREAK_MARK = "BREAK_MARK",
+  CASE_JUMP = "CASE_JUMP",
+  CASE_MARK = "CASE_MARK",
 }
 
 export interface BaseInstruction {
@@ -110,6 +112,41 @@ export function isBreakMarkInstruction(
     return isInstruction(i) && i.type == InstructionType.BREAK_MARK;
 }
 
+export interface CaseJumpInstruction extends BaseInstruction {
+  type: InstructionType.CASE_JUMP;
+  caseValue: bigint;
+}
+
+const caseJumpInstruction = (caseValue: bigint): CaseJumpInstruction => ({
+  type: InstructionType.CASE_JUMP,
+  caseValue,
+})
+
+export interface CaseMarkInstruction extends BaseInstruction {
+  type: InstructionType.CASE_MARK;
+  caseValue : bigint;
+}
+
+const caseMarkInstruction = (caseValue: bigint): CaseMarkInstruction => ({
+  type: InstructionType.CASE_MARK,
+  caseValue,
+})
+
+// creates a caseJumpInstruction and caseMarkInstruction with the same caseValue
+export const createCaseInstructionPair = (caseValue: bigint) => {
+  return {
+    jumpInstruction: {
+      type: InstructionType.CASE_JUMP,
+      caseValue,
+    } as CaseJumpInstruction,
+
+    markInstruction: {
+      type: InstructionType.CASE_MARK,
+      caseValue,
+    } as CaseMarkInstruction,
+  }
+}
+
 export type Instruction = 
   | BinaryOpInstruction
   | UnaryOpInstruction
@@ -118,7 +155,9 @@ export type Instruction =
   | MemoryStoreInstruction
   | MemoryLoadInstruction
   | WhileLoopInstruction
-  | BreakMarkInstruction;
+  | BreakMarkInstruction
+  | CaseJumpInstruction
+  | CaseMarkInstruction;
 
 export const isInstruction = (item: any): item is Instruction => {
   return item && typeof item === 'object' && 'type' in item && 

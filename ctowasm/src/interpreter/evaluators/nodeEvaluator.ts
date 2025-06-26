@@ -128,10 +128,12 @@ export const NodeEvaluator: {
 
   /**
    * https://stackoverflow.com/questions/68406541/how-cases-get-evaluated-in-switch-statements-c
+   * No default statement body not tested yet
    */
   SwitchStatement: (runtime: Runtime, node: SwitchStatementP): Runtime => {
-    
-    return new Runtime();
+    const conditions = node.cases.map(condition => condition.condition);
+    const body = node.cases.map(body => body.statements);
+    return runtime.push(node.defaultStatements).pushNode(body.flat()).pushNode(conditions);
   },
 
   LocalAddress: (runtime: Runtime, node: LocalAddress): Runtime => {

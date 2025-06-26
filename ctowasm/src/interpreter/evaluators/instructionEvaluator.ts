@@ -10,6 +10,8 @@ import {
   MemoryStoreInstruction,
   WhileLoopInstruction,
   BreakMarkInstruction,
+  CaseMarkInstruction,
+  CaseJumpInstruction,
  } from "~src/interpreter/controlItems/instructions";
 import { performBinaryOperation, performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
 import { determineResultDataTypeOfBinaryExpression } from "~src/processor/expressionUtil";
@@ -160,6 +162,14 @@ export const InstructionEvaluator: {
   },
 
   [InstructionType.BREAK_MARK]: (runtime: Runtime, instruction: BreakMarkInstruction): Runtime => {
+    return runtime;
+  },
+
+  [InstructionType.CASE_JUMP]: (runtime: Runtime, instruction: CaseJumpInstruction): Runtime => {
+    return runtime;
+  },
+
+  [InstructionType.CASE_MARK]: (runtime: Runtime, instruction: CaseMarkInstruction): Runtime => {
     return runtime;
   }
 };
