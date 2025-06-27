@@ -1,7 +1,6 @@
 import { BinaryOperator, ScalarCDataType } from "~src/common/types";
 import { CNodeP, ExpressionP } from "~src/processor/c-ast/core";
-import { BinaryExpressionP } from "~src/processor/c-ast/expression/expressions";
-import { Address } from "~src/processor/c-ast/memory";
+import { Control, ControlItem } from "~src/interpreter/utils/control";
 
 /**
  * Types of instructions for the interpreter
@@ -11,9 +10,12 @@ export enum InstructionType {
   UNARY_OP = "UNARY_OP",
   BRANCH = "BRANCH",
   POP = "POP",
-  MEMORYSTORE = "MEMORYSTORE",
-  MEMORYLOAD = "MEMORYLOAD",
+  MEMORY_STORE = "MEMORY_STORE",
+  MEMORY_LOAD = "MEMORY_LOAD",
   WHILE = "WHILE",
+  BREAK_MARK = "BREAK_MARK",
+  CASE_JUMP = "CASE_JUMP",
+  CASE_MARK = "CASE_MARK",
 }
 
 export interface BaseInstruction {
@@ -65,22 +67,22 @@ export const popInstruction = (): popInstruction => ({
 // ===== MEMORY =====
 
 export interface MemoryStoreInstruction extends BaseInstruction {
-  type: InstructionType.MEMORYSTORE;
+  type: InstructionType.MEMORY_STORE;
   dataType: ScalarCDataType;
 }
 
 export const memoryStoreInstruction = (dataType: ScalarCDataType): MemoryStoreInstruction => ({
-  type: InstructionType.MEMORYSTORE,
+  type: InstructionType.MEMORY_STORE,
   dataType: dataType,
 })
 
 export interface MemoryLoadInstruction extends BaseInstruction {
-  type: InstructionType.MEMORYLOAD;
+  type: InstructionType.MEMORY_LOAD;
   dataType: ScalarCDataType;
 }
 
 export const memoryLoadInstruction = (dataType: ScalarCDataType): MemoryLoadInstruction => ({
-  type: InstructionType.MEMORYLOAD,
+  type: InstructionType.MEMORY_LOAD,
   dataType,
 })
 
@@ -96,6 +98,68 @@ export const whileLoopInstruction = (condition: ExpressionP, body: CNodeP[]): Wh
   body,
 })
 
+export interface BreakMarkInstruction extends BaseInstruction {
+  type: InstructionType.BREAK_MARK;
+}
+
+export const breakMarkInstruction = (): BreakMarkInstruction => ({
+  type: InstructionType.BREAK_MARK,
+})
+
+export function isBreakMarkInstruction(
+  i: ControlItem)
+  : i is BreakMarkInstruction {
+    return isInstruction(i) && i.type == InstructionType.BREAK_MARK;
+}
+
+export interface CaseJumpInstruction extends BaseInstruction {
+  type: InstructionType.CASE_JUMP;
+  caseValue: number;
+}
+
+const caseJumpInstruction = (caseValue: number): CaseJumpInstruction => ({
+  type: InstructionType.CASE_JUMP,
+  caseValue,
+})
+
+export interface CaseMarkInstruction extends BaseInstruction {
+  type: InstructionType.CASE_MARK;
+  caseValue : number;
+}
+
+const caseMarkInstruction = (caseValue: number): CaseMarkInstruction => ({
+  type: InstructionType.CASE_MARK,
+  caseValue,
+})
+
+// creates a caseJumpInstruction and caseMarkInstruction with the same caseValue
+export const createCaseInstructionPair = (caseValue: number) => {
+  return {
+    jumpInstruction: {
+      type: InstructionType.CASE_JUMP,
+      caseValue,
+    } as CaseJumpInstruction,
+
+    markInstruction: {
+      type: InstructionType.CASE_MARK,
+      caseValue,
+    } as CaseMarkInstruction,
+  }
+}
+
+export function isCaseMarkInstruction(
+  i: ControlItem)
+  : i is CaseMarkInstruction {
+    return isInstruction(i) && i.type == InstructionType.CASE_MARK;
+}
+
+export function doCaseInstructionsMatch(
+  jumpInstruction: CaseJumpInstruction,
+  markInstruction: CaseMarkInstruction
+): boolean {
+  return jumpInstruction.caseValue === markInstruction.caseValue;
+}
+
 export type Instruction = 
   | BinaryOpInstruction
   | UnaryOpInstruction
@@ -103,7 +167,10 @@ export type Instruction =
   | popInstruction
   | MemoryStoreInstruction
   | MemoryLoadInstruction
-  | WhileLoopInstruction;
+  | WhileLoopInstruction
+  | BreakMarkInstruction
+  | CaseJumpInstruction
+  | CaseMarkInstruction;
 
 export const isInstruction = (item: any): item is Instruction => {
   return item && typeof item === 'object' && 'type' in item && 

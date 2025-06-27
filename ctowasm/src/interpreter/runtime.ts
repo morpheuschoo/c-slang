@@ -199,10 +199,25 @@ export class Runtime {
     );
   }
   
+  popNode(): [ControlItem, Runtime] {
+    const [node, newControl] = this.control.pop();
+    if(node === undefined) {
+      throw new Error("Undefined popped node");
+    }
+    return [
+      node, 
+      new Runtime(
+        newControl,
+        this.stash,
+        this.memory,
+      )
+    ];
+  }
+
   popValue(): [StashItem, Runtime] {
     const [value, newStash] = this.stash.pop();
     if(value === undefined) {
-      throw new Error("Undefined poped stash value");
+      throw new Error("Undefined popped stash value");
     }
     return [
       value, 
@@ -244,5 +259,9 @@ export class Runtime {
     result += this.memory.getFormattedMemoryView();
 
     return result;
+  }
+
+  isControlEmpty(): boolean {
+    return this.control.isEmpty();
   }
 }

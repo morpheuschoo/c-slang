@@ -9,12 +9,18 @@ import {
   MemoryLoadInstruction,
   MemoryStoreInstruction,
   WhileLoopInstruction,
+  BreakMarkInstruction,
+  CaseMarkInstruction,
+  CaseJumpInstruction,
+  isCaseMarkInstruction,
+  doCaseInstructionsMatch,
  } from "~src/interpreter/controlItems/instructions";
 import { performBinaryOperation, performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
 import { determineResultDataTypeOfBinaryExpression } from "~src/processor/expressionUtil";
 import { isIntegerType } from "~src/common/utils";
 import { getAdjustedIntValueAccordingToDataType } from "~src/processor/processConstant";
 import { FloatDataType, IntegerDataType, UnaryOperator } from "~src/common/types";
+import { StashItem } from "src/interpreter/utils/stash";
 
 export const InstructionEvaluator: {
   [InstrType in Instruction["type"]]: (
@@ -118,7 +124,7 @@ export const InstructionEvaluator: {
     return runtimeWithPoppedValue.pushNode(instruction.falseExpr);
   },
 
-  [InstructionType.MEMORYSTORE]: (runtime: Runtime, instruction: MemoryStoreInstruction): Runtime => {
+  [InstructionType.MEMORY_STORE]: (runtime: Runtime, instruction: MemoryStoreInstruction): Runtime => {
     const [ address, runtimeAfter ]= runtime.popValue();
     const [ value, _ ] = runtimeAfter.popValue();
 
@@ -129,7 +135,7 @@ export const InstructionEvaluator: {
     return runtimeAfter.memoryWrite(address, value, instruction.dataType);
   },
 
-  [InstructionType.MEMORYLOAD]: (runtime: Runtime, instruction: MemoryLoadInstruction): Runtime => {
+  [InstructionType.MEMORY_LOAD]: (runtime: Runtime, instruction: MemoryLoadInstruction): Runtime => {
     const [ address, _ ] = runtime.popValue();
     return runtime.memoryLoad(address, instruction.dataType);
   },
@@ -148,7 +154,7 @@ export const InstructionEvaluator: {
     
     const isTrue: boolean = condition.value === 1n ? true : false;
 
-    if(!isTrue) {
+    if (!isTrue) {
       return runtimeWithPoppedValue;
     }
     return runtimeWithPoppedValue.push([
@@ -156,5 +162,56 @@ export const InstructionEvaluator: {
       instruction
     ]).push(instruction.body);
 
+  },
+
+  [InstructionType.BREAK_MARK]: (runtime: Runtime, instruction: BreakMarkInstruction): Runtime => {
+    return runtime;
+  },
+
+  /**
+   * TODO: cleanup code
+   */
+  [InstructionType.CASE_JUMP]: (runtime: Runtime, instruction: CaseJumpInstruction): Runtime => {
+    let isTrue: boolean = false;
+    let currRuntime = runtime;
+    let condition: StashItem;
+
+    if (instruction.caseValue != -1) {
+      [condition, currRuntime] = runtime.popValue();
+    
+      if (!("value" in condition)) {
+        throw new Error("Case jump instruction expects a boolean")
+      }
+
+      isTrue = condition.value === 1n ? true : false;
+    } else {
+      isTrue = true;
+    }
+    
+    if (!isTrue) {
+      return currRuntime;
+    }
+    
+    let foundCaseMark = false;
+
+    while(!currRuntime.isControlEmpty()) {
+      const [item, newRuntime] = currRuntime.popNode();
+      currRuntime = newRuntime;
+
+      if (isCaseMarkInstruction(item) && doCaseInstructionsMatch(instruction, item)) {
+        foundCaseMark = true;
+        break;
+      }
+    }
+
+    if(!foundCaseMark) {
+      throw new Error("Unable to locate associated case mark statement")
+    }
+
+    return currRuntime;
+  },
+
+  [InstructionType.CASE_MARK]: (runtime: Runtime, instruction: CaseMarkInstruction): Runtime => {
+    return runtime;
   }
 };

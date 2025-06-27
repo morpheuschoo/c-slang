@@ -2,6 +2,9 @@ import { Runtime } from "~src/interpreter/runtime";
 import {  
   binaryOpInstruction, 
   branchOpInstruction, 
+  breakMarkInstruction, 
+  createCaseInstructionPair, 
+  isBreakMarkInstruction, 
   memoryLoadInstruction, 
   memoryStoreInstruction,  
   popInstruction, 
@@ -35,6 +38,8 @@ import {
   ForLoopP,
 } from "~src/processor/c-ast/statement/iterationStatement";
 import { ExpressionStatementP } from "~src/processor/c-ast/statement/expressionStatement";
+import { containsBreakStatement } from "~src/interpreter/utils/jumpStatementChecking";
+import { ControlItem } from "~src/interpreter/utils/control";
 
 export const NodeEvaluator: { 
   [Type in CNodeType]?: (
@@ -62,14 +67,24 @@ export const NodeEvaluator: {
   // === ITERATION STATEMENTS ===
 
   DoWhileLoop: (runtime: Runtime, node: DoWhileLoopP): Runtime => {
-    return runtime.push([
+    let pRuntime = runtime;
+    if (containsBreakStatement(node.body)) {
+      pRuntime = runtime.push([breakMarkInstruction()]);
+    }
+    
+    return pRuntime.push([
       node.condition,
       whileLoopInstruction(node.condition, node.body),
     ]).push(node.body)
   },
 
   WhileLoop: (runtime: Runtime, node: WhileLoopP): Runtime => {
-    return runtime.push([
+    let pRuntime = runtime;
+    if (containsBreakStatement(node.body)) {
+      pRuntime = runtime.push([breakMarkInstruction()]);
+    }
+    
+    return pRuntime.push([
       node.condition,
       whileLoopInstruction(node.condition, node.body),
     ]);
@@ -87,9 +102,25 @@ export const NodeEvaluator: {
     return runtime;
   },
 
-  // TODO
   BreakStatement: (runtime: Runtime, node: BreakStatementP): Runtime => {
-    return new Runtime();
+    let currRuntime = runtime;
+    let foundBreakMark = false;
+
+    while (!currRuntime.isControlEmpty()) {
+      const [item, newRuntime] = currRuntime.popNode();
+      currRuntime = newRuntime;
+
+      if (isBreakMarkInstruction(item)) {
+        foundBreakMark = true;
+        break;
+      }
+    }
+    
+    if (!foundBreakMark) {
+      throw new Error("Unable to locate break statement");
+    }
+
+    return currRuntime;
   },
 
   // TODO
@@ -97,9 +128,53 @@ export const NodeEvaluator: {
     return new Runtime();
   },
 
-  // TODO
+  /**
+   * https://stackoverflow.com/questions/68406541/how-cases-get-evaluated-in-switch-statements-c
+   * No default statement body not tested yet
+   * 
+   * TODO: 
+   * 1. fix identifier for default
+   * 2. redundant case marks need to be skipped
+   * 3. redundant break marks need to be skipped
+   */
   SwitchStatement: (runtime: Runtime, node: SwitchStatementP): Runtime => {
-    return new Runtime();
+    const hasBreak = containsBreakStatement(
+      [...node.cases.flatMap(c => c.statements), ...node.defaultStatements]
+    )
+
+    let updatedRuntime = runtime;
+    if (hasBreak) {
+      updatedRuntime = updatedRuntime.push([breakMarkInstruction()]);
+    }
+
+    let conditions: ControlItem[] = [];
+    let statements: ControlItem[] = [];
+    
+    for (let i = 0; i < node.cases.length; i++) {
+      const caseItem = node.cases[i];
+      const casePair = createCaseInstructionPair(i);
+      
+      conditions.push(caseItem.condition);
+      conditions.push(casePair.jumpInstruction);
+
+      statements.push(casePair.markInstruction);
+      statements.push(...caseItem.statements);
+    }
+
+     if (node.defaultStatements) {
+      const defaultPair = createCaseInstructionPair(-1);
+      
+      conditions.push(defaultPair.jumpInstruction);
+      
+      statements.push(defaultPair.markInstruction);
+      statements.push(...node.defaultStatements);
+    }
+
+    return updatedRuntime.push(statements).push(conditions);
+    
+    // const conditions = node.cases.map(condition => condition.condition);
+    // const body = node.cases.map(body => body.statements);
+    // return runtime.push(node.defaultStatements).pushNode(body.flat()).pushNode(conditions);
   },
 
   LocalAddress: (runtime: Runtime, node: LocalAddress): Runtime => {
