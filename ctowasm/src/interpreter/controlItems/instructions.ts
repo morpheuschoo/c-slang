@@ -114,26 +114,26 @@ export function isBreakMarkInstruction(
 
 export interface CaseJumpInstruction extends BaseInstruction {
   type: InstructionType.CASE_JUMP;
-  caseValue: bigint;
+  caseValue: number;
 }
 
-const caseJumpInstruction = (caseValue: bigint): CaseJumpInstruction => ({
+const caseJumpInstruction = (caseValue: number): CaseJumpInstruction => ({
   type: InstructionType.CASE_JUMP,
   caseValue,
 })
 
 export interface CaseMarkInstruction extends BaseInstruction {
   type: InstructionType.CASE_MARK;
-  caseValue : bigint;
+  caseValue : number;
 }
 
-const caseMarkInstruction = (caseValue: bigint): CaseMarkInstruction => ({
+const caseMarkInstruction = (caseValue: number): CaseMarkInstruction => ({
   type: InstructionType.CASE_MARK,
   caseValue,
 })
 
 // creates a caseJumpInstruction and caseMarkInstruction with the same caseValue
-export const createCaseInstructionPair = (caseValue: bigint) => {
+export const createCaseInstructionPair = (caseValue: number) => {
   return {
     jumpInstruction: {
       type: InstructionType.CASE_JUMP,
@@ -145,6 +145,19 @@ export const createCaseInstructionPair = (caseValue: bigint) => {
       caseValue,
     } as CaseMarkInstruction,
   }
+}
+
+export function isCaseMarkInstruction(
+  i: ControlItem)
+  : i is CaseMarkInstruction {
+    return isInstruction(i) && i.type == InstructionType.CASE_MARK;
+}
+
+export function doCaseInstructionsMatch(
+  jumpInstruction: CaseJumpInstruction,
+  markInstruction: CaseMarkInstruction
+): boolean {
+  return jumpInstruction.caseValue === markInstruction.caseValue;
 }
 
 export type Instruction = 

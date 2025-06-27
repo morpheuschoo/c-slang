@@ -12,12 +12,15 @@ import {
   BreakMarkInstruction,
   CaseMarkInstruction,
   CaseJumpInstruction,
+  isCaseMarkInstruction,
+  doCaseInstructionsMatch,
  } from "~src/interpreter/controlItems/instructions";
 import { performBinaryOperation, performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
 import { determineResultDataTypeOfBinaryExpression } from "~src/processor/expressionUtil";
 import { isIntegerType } from "~src/common/utils";
 import { getAdjustedIntValueAccordingToDataType } from "~src/processor/processConstant";
 import { FloatDataType, IntegerDataType, UnaryOperator } from "~src/common/types";
+import { StashItem } from "src/interpreter/utils/stash";
 
 export const InstructionEvaluator: {
   [InstrType in Instruction["type"]]: (
@@ -151,7 +154,7 @@ export const InstructionEvaluator: {
     
     const isTrue: boolean = condition.value === 1n ? true : false;
 
-    if(!isTrue) {
+    if (!isTrue) {
       return runtimeWithPoppedValue;
     }
     return runtimeWithPoppedValue.push([
@@ -165,8 +168,47 @@ export const InstructionEvaluator: {
     return runtime;
   },
 
+  /**
+   * TODO: cleanup code
+   */
   [InstructionType.CASE_JUMP]: (runtime: Runtime, instruction: CaseJumpInstruction): Runtime => {
-    return runtime;
+    let isTrue: boolean = false;
+    let currRuntime = runtime;
+    let condition: StashItem;
+
+    if (instruction.caseValue != -1) {
+      [condition, currRuntime] = runtime.popValue();
+    
+      if (!("value" in condition)) {
+        throw new Error("Case jump instruction expects a boolean")
+      }
+
+      isTrue = condition.value === 1n ? true : false;
+    } else {
+      isTrue = true;
+    }
+    
+    if (!isTrue) {
+      return currRuntime;
+    }
+    
+    let foundCaseMark = false;
+
+    while(!currRuntime.isControlEmpty()) {
+      const [item, newRuntime] = currRuntime.popNode();
+      currRuntime = newRuntime;
+
+      if (isCaseMarkInstruction(item) && doCaseInstructionsMatch(instruction, item)) {
+        foundCaseMark = true;
+        break;
+      }
+    }
+
+    if(!foundCaseMark) {
+      throw new Error("Unable to locate associated case mark statement")
+    }
+
+    return currRuntime;
   },
 
   [InstructionType.CASE_MARK]: (runtime: Runtime, instruction: CaseMarkInstruction): Runtime => {

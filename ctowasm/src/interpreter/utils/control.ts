@@ -35,6 +35,11 @@ export class Control extends Stack<ControlItem, Control> {
           item.type === InstructionType.BREAK_MARK
         ) {
           result += `  ${itemPosition}. [Instruction] ${item.type}\n`;
+        } else if (
+          item.type === InstructionType.CASE_JUMP ||
+          item.type === InstructionType.CASE_MARK
+        ) {
+          result += `  ${itemPosition}. [Instruction] ${item.type}: '${item.caseValue}'\n`;
         }
       } else {
         const nodeItem = item as any;

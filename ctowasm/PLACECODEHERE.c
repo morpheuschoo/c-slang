@@ -1,14 +1,13 @@
 int main() {
-  int i = 2;
+  int i = 1;
   switch (i) {
     case 1:
       1;
       2;
       3;
-      // break;
+      break;
     case 2:
       200;
-      // break;
     default:
       999;
   }
