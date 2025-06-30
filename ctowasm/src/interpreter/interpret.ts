@@ -20,13 +20,13 @@ export class Interpreter {
     if(!mainFunction) {
       throw new Error("Main function not defined");
     }
-    const initialRuntime = new Runtime(new Control(mainFunction.body.reverse()));
+    const initialRuntime = new Runtime(new Control([...mainFunction.body].reverse()));
 
     this.runtimeStack.push(initialRuntime);
     
     let currentRuntime = initialRuntime;
     
-    while (!currentRuntime.hasCompleted()) {  
+    while (!currentRuntime.hasCompleted()) { 
       currentRuntime = currentRuntime.next();
       this.runtimeStack.push(currentRuntime);
     }
