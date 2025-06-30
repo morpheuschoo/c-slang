@@ -4,6 +4,7 @@ import {
   branchOpInstruction, 
   breakMarkInstruction, 
   createCaseInstructionPair, 
+  createDefaultCaseInstructionPair, 
   isBreakMarkInstruction, 
   memoryLoadInstruction, 
   memoryStoreInstruction,  
@@ -24,8 +25,8 @@ import {
   PostStatementExpressionP,
   ConditionalExpressionP,
 } from "~src/processor/c-ast/expression/expressions";
-import { Address, LocalAddress, MemoryLoad, MemoryStore, ReturnObjectAddress } from "~src/processor/c-ast/memory";
-import { FunctionCallP, FunctionDefinitionP } from "~src/processor/c-ast/function";
+import { LocalAddress, MemoryLoad, MemoryStore, ReturnObjectAddress } from "~src/processor/c-ast/memory";
+import { FunctionCallP } from "~src/processor/c-ast/function";
 import { 
   BreakStatementP, 
   ContinueStatementP, 
@@ -133,7 +134,6 @@ export const NodeEvaluator: {
    * No default statement body not tested yet
    * 
    * TODO: 
-   * 1. fix identifier for default
    * 2. redundant case marks need to be skipped
    * 3. redundant break marks need to be skipped
    */
@@ -142,11 +142,6 @@ export const NodeEvaluator: {
       [...node.cases.flatMap(c => c.statements), ...node.defaultStatements]
     )
 
-    let updatedRuntime = runtime;
-    if (hasBreak) {
-      updatedRuntime = updatedRuntime.push([breakMarkInstruction()]);
-    }
-
     let conditions: ControlItem[] = [];
     let statements: ControlItem[] = [];
     
@@ -154,7 +149,7 @@ export const NodeEvaluator: {
       const caseItem = node.cases[i];
       const casePair = createCaseInstructionPair(i);
       
-      conditions.push(caseItem.condition);
+      conditions.push(caseItem.condition.rightExpr);
       conditions.push(casePair.jumpInstruction);
 
       statements.push(casePair.markInstruction);
@@ -162,7 +157,7 @@ export const NodeEvaluator: {
     }
 
      if (node.defaultStatements) {
-      const defaultPair = createCaseInstructionPair(-1);
+      const defaultPair = createDefaultCaseInstructionPair();
       
       conditions.push(defaultPair.jumpInstruction);
       
@@ -170,11 +165,13 @@ export const NodeEvaluator: {
       statements.push(...node.defaultStatements);
     }
 
-    return updatedRuntime.push(statements).push(conditions);
-    
-    // const conditions = node.cases.map(condition => condition.condition);
-    // const body = node.cases.map(body => body.statements);
-    // return runtime.push(node.defaultStatements).pushNode(body.flat()).pushNode(conditions);
+    let updatedRuntime = runtime;
+
+    if (hasBreak) {
+      updatedRuntime = updatedRuntime.push([breakMarkInstruction()]);
+    }
+
+    return updatedRuntime.push(statements).push(conditions).push([node.targetExpression]);
   },
 
   LocalAddress: (runtime: Runtime, node: LocalAddress): Runtime => {

@@ -9,6 +9,10 @@ export class Stash extends Stack<StashItem, Stash> {
     return new Stash(items);
   }
 
+  static isConstant(item: StashItem): item is ConstantP {
+    return item.type === "IntegerConstant" || item.type === "FloatConstant";
+  }
+
   toString(): string {
     if (this.isEmpty()) {
       return "  <empty>";

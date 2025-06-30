@@ -132,6 +132,12 @@ const caseMarkInstruction = (caseValue: number): CaseMarkInstruction => ({
   caseValue,
 })
 
+const DEFAULT_CASE_VALUE = -1;
+
+export const createDefaultCaseInstructionPair = () => {
+  return createCaseInstructionPair(DEFAULT_CASE_VALUE);
+};
+
 // creates a caseJumpInstruction and caseMarkInstruction with the same caseValue
 export const createCaseInstructionPair = (caseValue: number) => {
   return {
@@ -151,6 +157,12 @@ export function isCaseMarkInstruction(
   i: ControlItem)
   : i is CaseMarkInstruction {
     return isInstruction(i) && i.type == InstructionType.CASE_MARK;
+}
+
+export function isDefaultCaseInstruction(
+  instruction: CaseJumpInstruction | CaseMarkInstruction
+): boolean {
+  return instruction.caseValue === DEFAULT_CASE_VALUE;
 }
 
 export function doCaseInstructionsMatch(
