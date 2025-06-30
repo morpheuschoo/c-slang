@@ -1,4 +1,4 @@
-import { Runtime } from "~src/interpreter/runtime";
+import { Runtime, RuntimeMemoryWrite } from "~src/interpreter/runtime";
 import { 
   Instruction, 
   InstructionType, 
@@ -9,12 +9,16 @@ import {
   MemoryLoadInstruction,
   MemoryStoreInstruction,
   WhileLoopInstruction,
+  CallInstruction,
  } from "~src/interpreter/controlItems/instructions";
 import { performBinaryOperation, performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
 import { determineResultDataTypeOfBinaryExpression } from "~src/processor/expressionUtil";
-import { isIntegerType } from "~src/common/utils";
+import { getSizeOfScalarDataType, isIntegerType } from "~src/common/utils";
 import { getAdjustedIntValueAccordingToDataType } from "~src/processor/processConstant";
 import { FloatDataType, IntegerDataType, UnaryOperator } from "~src/common/types";
+import { DirectlyCalledFunction } from "~src/processor/c-ast/function";
+import { MemoryWriteInterface } from "../memory";
+import { LocalAddress } from "~src/processor/c-ast/memory";
 
 export const InstructionEvaluator: {
   [InstrType in Instruction["type"]]: (
@@ -126,12 +130,78 @@ export const InstructionEvaluator: {
       throw new Error("Not implemented yet");
     }
 
-    return runtimeAfter.memoryWrite(address, value, instruction.dataType);
+    return runtimeAfter.memoryWrite([{
+      type: "RuntimeMemoryWrite",
+      address: address,
+      value: value, 
+      datatype: instruction.dataType}]);
   },
 
   [InstructionType.MEMORYLOAD]: (runtime: Runtime, instruction: MemoryLoadInstruction): Runtime => {
     const [ address, _ ] = runtime.popValue();
     return runtime.memoryLoad(address, instruction.dataType);
+  },
+
+  [InstructionType.CALLINSTRUCTION]: (runtime: Runtime, instruction: CallInstruction): Runtime => {
+    const numOfParameters = instruction.functionDetails.parameters.length;
+    const parameters = runtime.peekStashDepth(numOfParameters);
+
+    if(instruction.calledFunction.type === "IndirectlyCalledFunction") {
+      throw new Error("Indirectly Called Function not implemented yet");
+    }
+
+    const calledFunction = instruction.calledFunction;
+    calledFunction as DirectlyCalledFunction;
+
+    const func = Runtime.astRootP.functions.find(x => x.name === calledFunction.functionName);
+    if(!func) {
+      throw new Error("No function called: " + calledFunction.functionName);
+    }
+
+    const sizeOfParams = instruction.functionDetails.sizeOfParams;
+    const sizeOfLocals = func.sizeOfLocals;
+    const sizeOfReturn = instruction.functionDetails.sizeOfReturn;
+
+    // Set up a new Stackframe
+    const newRuntime = runtime.stackFrameSetup(
+      sizeOfParams,
+      sizeOfLocals,
+      sizeOfReturn
+    )
+    
+    let offset = 0;
+    // Write parameters into memory
+    const writeParameters : RuntimeMemoryWrite[] = parameters.map(writeObject => {
+      if(writeObject.type === "IntegerConstant" || writeObject.type === "FloatConstant") {
+        const size = getSizeOfScalarDataType(writeObject.dataType)
+        offset -= size;
+
+        const writeAddress : LocalAddress = {
+          type: "LocalAddress",
+          offset: {
+            type: "IntegerConstant",
+            value: BigInt(offset),
+            dataType: "unsigned int"
+          },
+          dataType: "pointer"
+        }
+
+        const res : RuntimeMemoryWrite = {
+          type: "RuntimeMemoryWrite",
+          address: writeAddress,
+          value: writeObject,
+          datatype: writeObject.dataType
+        }
+
+        return res;
+      } else {
+        throw new Error("Not implemented yet: pointers as function arguments");
+      }
+    })
+
+    const writtenRuntime = newRuntime.memoryWrite(writeParameters);
+
+    return writtenRuntime;
   },
 
   [InstructionType.POP]: (runtime: Runtime, instruction: popInstruction): Runtime => {
