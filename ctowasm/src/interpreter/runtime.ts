@@ -125,7 +125,8 @@ export class Runtime {
           if(writeObject.address.subtype === "load") {
             throw new Error("Return object load instruction found in memory write")
           }
-          const writeAddress = writeObject.address.offset.value;
+          const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.basePointer.value) + writeObject.address.offset.value;
+          
           return {
             type: "MemoryWriteInterface",
             address: writeAddress,
@@ -168,20 +169,30 @@ export class Runtime {
 
       case "DataSegmentAddress": {
         const writeAddress = address.offset.value;
-        return this.pushValue(this.memory.load(writeAddress, dataType));
+        const value = this.memory.load(writeAddress, dataType);
+        const [ _, newRuntime ] = this.popValue();
+
+        return newRuntime.pushValue(value);
       }
       
       case "IntegerConstant": {
         const writeAddress = address.value
-        return this.pushValue(this.memory.load(writeAddress, dataType));
+        const value = this.memory.load(writeAddress, dataType);
+        const [ _, newRuntime ] = this.popValue();
+
+        return newRuntime.pushValue(value);
       }
       
       case "ReturnObjectAddress": {
-        if(address.subtype === "load") {
-          throw new Error("Return object load instruction found in memory write")
+        if(address.subtype === "store") {
+          throw new Error("Return object store instruction found in memory load")
         }
-        const writeAddress = address.offset.value;
-        return this.pushValue(this.memory.load(writeAddress, dataType));
+        const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.stackPointer.value) + address.offset.value;
+
+        const value = this.memory.load(writeAddress, dataType);
+        const [ _, newRuntime ] = this.popValue();
+
+        return newRuntime.pushValue(value);
       }
 
       case "DynamicAddress": {
@@ -210,6 +221,16 @@ export class Runtime {
     )
   }
 
+  stackFrameTearDown(stackPointer: number, basePointer: number) {
+    const newMemory = this.memory.stackFrameTearDown(stackPointer, basePointer);
+
+    return new Runtime(
+      this.control,
+      this.stash,
+      newMemory
+    )
+  }
+
   getPointers() : SharedWasmGlobalVariables {
     return this.memory.sharedWasmGlobalVariables;
   }
@@ -219,7 +240,7 @@ export class Runtime {
   // function to push general instruction/CNodeP onto the control
   push(item: ControlItem[]): Runtime {
     return new Runtime(
-      this.control.concat(item.reverse()),
+      this.control.concat([...item].reverse()),
       this.stash,
       this.memory,
     );
@@ -227,7 +248,7 @@ export class Runtime {
   
   pushNode(node: CNodeP[]): Runtime {
     return new Runtime(
-      this.control.concat(node.reverse()),
+      this.control.concat([...node].reverse()),
       this.stash,
       this.memory,
     );
@@ -235,7 +256,7 @@ export class Runtime {
   
   pushInstruction(instruction: Instruction[]): Runtime {
     return new Runtime(
-      this.control.concat(instruction.reverse()),
+      this.control.concat([...instruction].reverse()),
       this.stash,
       this.memory,
     );
@@ -266,16 +287,38 @@ export class Runtime {
     ];
   }
 
-  peekStashDepth(depth: number): ReadonlyArray<StashItem> {
-    return this.stash.peekLast(depth);
-  }
-  
   hasCompleted(): boolean {
     return this.control.isEmpty();
   }
 
   getResult(): any {
     return this.stash.isEmpty() ? null : this.stash.peek();
+  }
+
+  peekControl(): ControlItem {
+    return this.control.peek();
+  }
+
+  popControl(): [ControlItem, Runtime] {
+    const [popedItem, newControl] = this.control.pop();
+    const newRuntime = new Runtime(
+      newControl,
+      this.stash,
+      this.memory
+    )
+
+    if(popedItem === undefined) {
+      throw new Error("Cannot pop control: no elements left");
+    }
+
+    return [popedItem, newRuntime];
+  }
+
+  log(): void {
+    console.log("Stash")
+    console.log(this.stash);
+    console.log("Control")
+    console.log(this.control);
   }
 
   toString(): string {
