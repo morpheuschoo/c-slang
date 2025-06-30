@@ -1,6 +1,7 @@
 import { BinaryOperator, ScalarCDataType } from "~src/common/types";
 import { CNodeP, ExpressionP } from "~src/processor/c-ast/core";
 import { BinaryExpressionP } from "~src/processor/c-ast/expression/expressions";
+import { CalledFunction, FunctionDetails } from "~src/processor/c-ast/function";
 import { Address } from "~src/processor/c-ast/memory";
 
 /**
@@ -14,6 +15,8 @@ export enum InstructionType {
   MEMORYSTORE = "MEMORYSTORE",
   MEMORYLOAD = "MEMORYLOAD",
   WHILE = "WHILE",
+  STACKFRAMETEARDOWNINSTRUCTION = "STACKFRAMETEARDOWNINSTRUCTION",
+  CALLINSTRUCTION = "CALLINSTRUCTION"
 }
 
 export interface BaseInstruction {
@@ -96,6 +99,34 @@ export const whileLoopInstruction = (condition: ExpressionP, body: CNodeP[]): Wh
   body,
 })
 
+// ===== FUNCTION CALLS =====
+
+// Tears down the current stack frame and 
+// moves base pointer and stack pointer to the previous stack frame
+export interface StackFrameTearDownInstruction {
+  type: InstructionType.STACKFRAMETEARDOWNINSTRUCTION,
+  basePointer: number,
+  stackPointer: number,
+}
+
+export const stackFrameTearDownInstruction = (basePointer : number, stackPointer: number): StackFrameTearDownInstruction => ({
+  type: InstructionType.STACKFRAMETEARDOWNINSTRUCTION,
+  basePointer: basePointer,
+  stackPointer: stackPointer,
+})
+
+export interface CallInstruction {
+  type: InstructionType.CALLINSTRUCTION,
+  calledFunction: CalledFunction,
+  functionDetails: FunctionDetails
+}
+
+export const callInstruction = (calledFunction: CalledFunction, functionDetails: FunctionDetails): CallInstruction => ({
+  type: InstructionType.CALLINSTRUCTION,
+  calledFunction: calledFunction,
+  functionDetails: functionDetails
+})
+
 export type Instruction = 
   | BinaryOpInstruction
   | UnaryOpInstruction
@@ -103,6 +134,8 @@ export type Instruction =
   | popInstruction
   | MemoryStoreInstruction
   | MemoryLoadInstruction
+  | StackFrameTearDownInstruction
+  | CallInstruction
   | WhileLoopInstruction;
 
 export const isInstruction = (item: any): item is Instruction => {

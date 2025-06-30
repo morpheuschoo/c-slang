@@ -34,6 +34,8 @@ export class Control extends Stack<ControlItem, Control> {
           item.type === InstructionType.MEMORYSTORE
         ) {
           result += `  ${itemPosition}. [Instruction] ${item.type}\n`;
+        } else {
+          result += `  ${itemPosition}. [Instruction] ${item.type}\n`
         }
       } else {
         const nodeItem = item as any;

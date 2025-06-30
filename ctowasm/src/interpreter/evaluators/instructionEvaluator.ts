@@ -10,6 +10,7 @@ import {
   MemoryStoreInstruction,
   WhileLoopInstruction,
   CallInstruction,
+  StackFrameTearDownInstruction,
  } from "~src/interpreter/controlItems/instructions";
 import { performBinaryOperation, performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
 import { determineResultDataTypeOfBinaryExpression } from "~src/processor/expressionUtil";
@@ -19,6 +20,7 @@ import { FloatDataType, IntegerDataType, UnaryOperator } from "~src/common/types
 import { DirectlyCalledFunction } from "~src/processor/c-ast/function";
 import { MemoryWriteInterface } from "../memory";
 import { LocalAddress } from "~src/processor/c-ast/memory";
+import { StashItem } from "../utils/stash";
 
 export const InstructionEvaluator: {
   [InstrType in Instruction["type"]]: (
@@ -142,9 +144,23 @@ export const InstructionEvaluator: {
     return runtime.memoryLoad(address, instruction.dataType);
   },
 
+  [InstructionType.STACKFRAMETEARDOWNINSTRUCTION]: (runtime: Runtime, instruction: StackFrameTearDownInstruction): Runtime => {
+    const newRuntime = runtime.stackFrameTearDown(instruction.stackPointer, instruction.basePointer);
+
+    return newRuntime;
+  },
+
   [InstructionType.CALLINSTRUCTION]: (runtime: Runtime, instruction: CallInstruction): Runtime => {
     const numOfParameters = instruction.functionDetails.parameters.length;
-    const parameters = runtime.peekStashDepth(numOfParameters);
+    
+    let parameters: StashItem[] = [], popedRuntime = runtime;
+    for(let i = 0;i < numOfParameters; i++) {
+      const [parameter, newRuntime] = popedRuntime.popValue();
+
+      parameters.push(parameter);
+      popedRuntime = newRuntime;
+    }
+    parameters.reverse();
 
     if(instruction.calledFunction.type === "IndirectlyCalledFunction") {
       throw new Error("Indirectly Called Function not implemented yet");
@@ -153,17 +169,28 @@ export const InstructionEvaluator: {
     const calledFunction = instruction.calledFunction;
     calledFunction as DirectlyCalledFunction;
 
+    if(calledFunction.functionName === "print_int") {
+      const temp = parameters[0];
+      if(temp.type !== "IntegerConstant") {
+        throw new Error("FUKK");
+      }
+
+      console.log("PRINTED VALUE: ", temp.value);
+      return popedRuntime;
+    }
+
     const func = Runtime.astRootP.functions.find(x => x.name === calledFunction.functionName);
     if(!func) {
       throw new Error("No function called: " + calledFunction.functionName);
     }
-
+    
+    // internal functions (defined by user)
     const sizeOfParams = instruction.functionDetails.sizeOfParams;
     const sizeOfLocals = func.sizeOfLocals;
     const sizeOfReturn = instruction.functionDetails.sizeOfReturn;
 
     // Set up a new Stackframe
-    const newRuntime = runtime.stackFrameSetup(
+    const newRuntime = popedRuntime.stackFrameSetup(
       sizeOfParams,
       sizeOfLocals,
       sizeOfReturn
@@ -198,10 +225,12 @@ export const InstructionEvaluator: {
         throw new Error("Not implemented yet: pointers as function arguments");
       }
     })
-
     const writtenRuntime = newRuntime.memoryWrite(writeParameters);
 
-    return writtenRuntime;
+    // push body statements
+    const resultRuntime = writtenRuntime.push(func.body);
+
+    return resultRuntime;
   },
 
   [InstructionType.POP]: (runtime: Runtime, instruction: popInstruction): Runtime => {
