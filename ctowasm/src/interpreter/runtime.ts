@@ -9,6 +9,7 @@ import { Memory } from "./memory";
 import { ScalarCDataType } from "~src/common/types";
 import { Address, MemoryLoad } from "~src/processor/c-ast/memory";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
+import { SharedWasmGlobalVariables } from "~src/modules";
 
 
 export class Runtime {
@@ -85,17 +86,32 @@ export class Runtime {
     switch(address.type) {
       case "LocalAddress": {
         const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.basePointer.value) + address.offset.value;
-        return new Runtime(this.control, this.stash, this.memory.write(writeAddress, value, datatype));
+        return new Runtime(this.control, this.stash, this.memory.write([{
+          type: "MemoryWriteInterface",
+          address: writeAddress,
+          value: value,
+          dataType: datatype
+        }]));
       }
 
       case "DataSegmentAddress": {
         const writeAddress = address.offset.value;
-        return new Runtime(this.control, this.stash, this.memory.write(writeAddress, value, datatype));
+        return new Runtime(this.control, this.stash, this.memory.write([{
+          type: "MemoryWriteInterface",
+          address: writeAddress,
+          value: value,
+          dataType: datatype
+        }]));
       }
       
       case "IntegerConstant": {
         const writeAddress = address.value
-        return new Runtime(this.control, this.stash, this.memory.write(writeAddress, value, datatype));
+        return new Runtime(this.control, this.stash, this.memory.write([{
+          type: "MemoryWriteInterface",
+          address: writeAddress,
+          value: value,
+          dataType: datatype
+        }]));
       }
       
       case "ReturnObjectAddress": {
@@ -103,7 +119,12 @@ export class Runtime {
           throw new Error("Return object load instruction found in memory write")
         }
         const writeAddress = address.offset.value;
-        return new Runtime(this.control, this.stash, this.memory.write(writeAddress, value, datatype));
+        return new Runtime(this.control, this.stash, this.memory.write([{
+          type: "MemoryWriteInterface",
+          address: writeAddress,
+          value: value,
+          dataType: datatype
+        }]));
       }
 
       case "DynamicAddress": {
@@ -166,6 +187,22 @@ export class Runtime {
     }
   }
 
+  stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number): Runtime {
+    const newMemory = this.memory.stackFrameSetup(sizeOfParams, sizeOfLocals, sizeOfReturn);
+
+    return new Runtime(
+      this.control,
+      this.stash,
+      newMemory
+    )
+  }
+
+  getPointers() : SharedWasmGlobalVariables {
+    return this.memory.sharedWasmGlobalVariables;
+  }
+
+
+  // Control functions
   // function to push general instruction/CNodeP onto the control
   push(item: ControlItem[]): Runtime {
     return new Runtime(
@@ -191,6 +228,8 @@ export class Runtime {
     );
   }
   
+  // STASH FUNCTIONS
+
   pushValue(value: StashItem): Runtime {
     return new Runtime(
       this.control,
@@ -212,6 +251,10 @@ export class Runtime {
         this.memory,
       )
     ];
+  }
+
+  peekStashDepth(depth: number): ReadonlyArray<StashItem> {
+    return this.stash.peekLast(depth);
   }
   
   hasCompleted(): boolean {
