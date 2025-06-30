@@ -78,12 +78,6 @@ export class Memory {
     for(let i = 0;i < dataSegmentByteArray.length;i++) {
       view[i] = dataSegmentByteArray[i];
     }
-
-    // test
-    const first8Bytes = view.slice(8);
-    const dataView = new DataView(first8Bytes.buffer, first8Bytes.byteOffset, first8Bytes.byteLength);
-    const longValue = dataView.getBigInt64(0, true); // little-endian
-    console.log("First 8 bytes as long:", longValue.toString());
   }
 
   // sets the values for stack pointer, base pointer, heap pointer
@@ -112,8 +106,8 @@ export class Memory {
     const newMemory = this.clone();
     const totalSize = sizeOfParams + sizeOfLocals + sizeOfReturn;
     
-    const SP = this.sharedWasmGlobalVariables.stackPointer.value + totalSize;
-    const BP = this.sharedWasmGlobalVariables.stackPointer.value + sizeOfReturn;
+    const SP = this.sharedWasmGlobalVariables.stackPointer.value - totalSize;
+    const BP = this.sharedWasmGlobalVariables.stackPointer.value - sizeOfReturn;
     
     newMemory.setPointers(
       SP,
@@ -124,8 +118,19 @@ export class Memory {
     return newMemory;
   }
 
-  checkOutOfBounds(address: bigint, size: bigint) {
-    return address < 0 || address >= this.memory.buffer.byteLength || address + size < 0 || address + size > this.memory.buffer.byteLength; 
+  stackFrameTearDown(stackPointer: number, basePointer: number): Memory {
+    const newMemory = this.clone();
+    newMemory.setPointers(
+      stackPointer,
+      basePointer,
+      this.sharedWasmGlobalVariables.heapPointer.value
+    )
+
+    return newMemory;
+  }
+
+  checkOutOfBounds(address: bigint) {
+    return address < 0 || address >= this.memory.buffer.byteLength; 
   }
 
   // function to write a data type with a value to the memory in the address
@@ -137,10 +142,14 @@ export class Memory {
       const bytestr = convertConstantToByteStr(value.value, value.dataType);
       const byteArray = parseByteStr(bytestr);
   
-      if(this.checkOutOfBounds(value.address, BigInt(byteArray.length))) {
+      if(this.checkOutOfBounds(value.address)) {
+        console.log(value.address);
+        console.log(byteArray.length);
+        console.log(bytestr);
+        console.log(value.dataType);
         throw new Error("Memory out of bounds");
       }
-      for(let i = 0; i < byteArray.length; i++) {
+      for(let i = 0; i < Math.min(byteArray.length, this.memory.buffer.byteLength - Number(value.address)); i++) {
         newMemoryView[i + Number(value.address)] = byteArray[i];
       }
     }
@@ -155,14 +164,14 @@ export class Memory {
     }
     
     const size = primaryDataTypeSizes[datatype];
-    this.checkOutOfBounds(address, BigInt(size));
+    this.checkOutOfBounds(address);
     
     let view = new Uint8Array(this.memory.buffer);
     if(isIntegerType(datatype)) {
       datatype as IntegerDataType;
 
       let value = 0n;
-      for (let i = 0; i < size; i++) {
+      for (let i = 0; i < Math.min(size, this.memory.buffer.byteLength - Number(address)); i++) {
         value |= BigInt(view[Number(address) + i]) << BigInt(8 * i);
       }
       
