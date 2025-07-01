@@ -20,20 +20,13 @@ import {
   CallInstruction,
   StackFrameTearDownInstruction,
  } from "~src/interpreter/controlItems/instructions";
-import { performBinaryOperation, performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
-import { determineResultDataTypeOfBinaryExpression } from "~src/processor/expressionUtil";
 import { getSizeOfScalarDataType, isIntegerType } from "~src/common/utils";
-import { getAdjustedIntValueAccordingToDataType } from "~src/processor/processConstant";
-import { FloatDataType, IntegerDataType, UnaryOperator } from "~src/common/types";
 import { DirectlyCalledFunction } from "~src/processor/c-ast/function";
-import { MemoryWriteInterface } from "../memory";
 import { LocalAddress } from "~src/processor/c-ast/memory";
-import { StashItem } from "../utils/stash";
 import { performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
-import { isIntegerType } from "~src/common/utils";
 import { getAdjustedIntValueAccordingToDataType } from "~src/processor/processConstant";
 import { FloatDataType, IntegerDataType, UnaryOperator } from "~src/common/types";
-import { Stash } from "~src/interpreter/utils/stash";
+import { StashItem, Stash } from "~src/interpreter/utils/stash";
 import { isConstantTrue, performConstantBinaryOperation } from "~src/interpreter/utils/operations"
 
 export const InstructionEvaluator: {
