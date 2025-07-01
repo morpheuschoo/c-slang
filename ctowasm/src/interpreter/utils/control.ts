@@ -30,10 +30,17 @@ export class Control extends Stack<ControlItem, Control> {
           item.type === InstructionType.BRANCH ||
           item.type === InstructionType.POP ||
           item.type === InstructionType.WHILE ||
-          item.type === InstructionType.MEMORYLOAD ||
-          item.type === InstructionType.MEMORYSTORE
+          item.type === InstructionType.MEMORY_LOAD ||
+          item.type === InstructionType.MEMORY_STORE ||
+          item.type === InstructionType.BREAK_MARK ||
+          item.type === InstructionType.CONTINUE_MARK
         ) {
           result += `  ${itemPosition}. [Instruction] ${item.type}\n`;
+        } else if (
+          item.type === InstructionType.CASE_JUMP ||
+          item.type === InstructionType.CASE_MARK
+        ) {
+          result += `  ${itemPosition}. [Instruction] ${item.type}: '${item.caseValue}'\n`;
         } else {
           result += `  ${itemPosition}. [Instruction] ${item.type}\n`
         }
