@@ -41,6 +41,8 @@ export class Control extends Stack<ControlItem, Control> {
           item.type === InstructionType.CASE_MARK
         ) {
           result += `  ${itemPosition}. [Instruction] ${item.type}: '${item.caseValue}'\n`;
+        } else {
+          result += `  ${itemPosition}. [Instruction] ${item.type}\n`
         }
       } else {
         const nodeItem = item as any;

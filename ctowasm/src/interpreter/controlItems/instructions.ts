@@ -1,5 +1,8 @@
 import { BinaryOperator, ScalarCDataType } from "~src/common/types";
 import { CNodeP, ExpressionP } from "~src/processor/c-ast/core";
+import { BinaryExpressionP } from "~src/processor/c-ast/expression/expressions";
+import { CalledFunction, FunctionDetails } from "~src/processor/c-ast/function";
+import { Address } from "~src/processor/c-ast/memory";
 import { Control, ControlItem } from "~src/interpreter/utils/control";
 
 /**
@@ -13,6 +16,8 @@ export enum InstructionType {
   MEMORY_STORE = "MEMORY_STORE",
   MEMORY_LOAD = "MEMORY_LOAD",
   WHILE = "WHILE",
+  STACKFRAMETEARDOWNINSTRUCTION = "STACKFRAMETEARDOWNINSTRUCTION",
+  CALLINSTRUCTION = "CALLINSTRUCTION",
   BREAK_MARK = "BREAK_MARK",
   CASE_JUMP = "CASE_JUMP",
   CASE_MARK = "CASE_MARK",
@@ -103,6 +108,34 @@ export const whileLoopInstruction = (
   condition,
   body,
   hasContinue,
+})
+
+// ===== FUNCTION CALLS =====
+
+// Tears down the current stack frame and 
+// moves base pointer and stack pointer to the previous stack frame
+export interface StackFrameTearDownInstruction {
+  type: InstructionType.STACKFRAMETEARDOWNINSTRUCTION,
+  basePointer: number,
+  stackPointer: number,
+}
+
+export const stackFrameTearDownInstruction = (basePointer : number, stackPointer: number): StackFrameTearDownInstruction => ({
+  type: InstructionType.STACKFRAMETEARDOWNINSTRUCTION,
+  basePointer: basePointer,
+  stackPointer: stackPointer,
+})
+
+export interface CallInstruction {
+  type: InstructionType.CALLINSTRUCTION,
+  calledFunction: CalledFunction,
+  functionDetails: FunctionDetails
+}
+
+export const callInstruction = (calledFunction: CalledFunction, functionDetails: FunctionDetails): CallInstruction => ({
+  type: InstructionType.CALLINSTRUCTION,
+  calledFunction: calledFunction,
+  functionDetails: functionDetails
 })
 
 export interface BreakMarkInstruction extends BaseInstruction {
@@ -201,6 +234,9 @@ export type Instruction =
   | popInstruction
   | MemoryStoreInstruction
   | MemoryLoadInstruction
+  | StackFrameTearDownInstruction
+  | CallInstruction
+  | WhileLoopInstruction
   | WhileLoopInstruction
   | BreakMarkInstruction
   | CaseJumpInstruction

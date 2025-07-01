@@ -2,6 +2,7 @@ import { Runtime } from "~src/interpreter/runtime";
 import {  
   binaryOpInstruction, 
   branchOpInstruction, 
+  callInstruction, 
   breakMarkInstruction, 
   continueMarkInstruction, 
   createCaseInstructionPair, 
@@ -11,6 +12,7 @@ import {
   memoryLoadInstruction, 
   memoryStoreInstruction,  
   popInstruction, 
+  stackFrameTearDownInstruction, 
   unaryOpInstruction ,
   whileLoopInstruction,
 } from "~src/interpreter/controlItems/instructions";
@@ -117,7 +119,19 @@ export const NodeEvaluator: {
 
   // TODO
   ReturnStatement: (runtime: Runtime, node: ReturnStatementP): Runtime => {
-    return runtime;
+    const topControlItem = runtime.peekControl();
+
+    if(topControlItem.type === "STACKFRAMETEARDOWNINSTRUCTION" || runtime.hasCompleted()) {
+      return runtime;
+    } else {
+      const returnStatement: ReturnStatementP = {
+        type: "ReturnStatement"
+      }
+      const [ _ , popedRuntime ] = runtime.popControl();
+      const newRuntime = popedRuntime.push([returnStatement]);
+
+      return newRuntime;
+    }
   },
 
   BreakStatement: (runtime: Runtime, node: BreakStatementP): Runtime => {
@@ -215,9 +229,9 @@ export const NodeEvaluator: {
 
   // TODO
   ReturnObjectAddress: (runtime: Runtime, node: ReturnObjectAddress): Runtime => {
-    // One for load
-    // One for store
-    return new Runtime();
+    const newRuntime = runtime.pushValue(node);
+
+    return newRuntime;
   },
 
   MemoryLoad: (runtime: Runtime, node: MemoryLoad): Runtime => {
@@ -242,7 +256,23 @@ export const NodeEvaluator: {
 
   // TODO
   FunctionCall: (runtime: Runtime, node: FunctionCallP): Runtime => {
-    return new Runtime();
+    // push order: stack frame tear down instruction, call instruction (contains function details information, and function call information),
+    // arguments
+    const pointers = runtime.getPointers();
+
+    const newRuntime = runtime.push([
+      ...node.args,
+      callInstruction(
+        node.calledFunction,
+        node.functionDetails
+      ),
+      stackFrameTearDownInstruction(
+        pointers.basePointer.value,
+        pointers.stackPointer.value
+      ),
+    ]);
+
+    return newRuntime;
   },
 
  // ========== EXPRESSIONS ==========
@@ -259,6 +289,8 @@ export const NodeEvaluator: {
     const runtimeWithInstruction = runtime.pushInstruction([binaryOpInstruction(node.operator, node.dataType)]);
     const runtimeWithRight = runtimeWithInstruction.pushNode([node.rightExpr]);
     
+    const newRuntime = runtime.push([node.leftExpr, node.rightExpr, binaryOpInstruction(node.operator, node.dataType)]) 
+
     return runtimeWithRight.pushNode([node.leftExpr]);
   },
 
@@ -269,12 +301,22 @@ export const NodeEvaluator: {
 
   // TODO
   PreStatementExpression: (runtime: Runtime, node: PreStatementExpressionP): Runtime => {
-    return new Runtime();
+    const newRuntime = runtime.push([
+      ...node.statements,
+      node.expr
+    ])
+
+    return newRuntime;
   },
 
   // TODO
   PostStatementExpression: (runtime: Runtime, node: PostStatementExpressionP): Runtime => {
-    return new Runtime();
+    const newRuntime = runtime.push([
+      node.expr,
+      ...node.statements
+    ])
+
+    return newRuntime;
   },
 
   ConditionalExpression: (runtime: Runtime, node: ConditionalExpressionP): Runtime => {

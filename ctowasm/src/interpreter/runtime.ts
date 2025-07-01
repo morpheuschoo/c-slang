@@ -5,11 +5,18 @@ import { Instruction, isInstruction } from "~src/interpreter/controlItems/instru
 import { NodeEvaluator } from "~src/interpreter/evaluators/nodeEvaluator";
 import { InstructionEvaluator } from "~src/interpreter/evaluators/instructionEvaluator";
 import { FunctionDefinitionP } from "~src/processor/c-ast/function";
-import { Memory } from "./memory";
+import { Memory, MemoryWriteInterface } from "./memory";
 import { ScalarCDataType } from "~src/common/types";
 import { Address, MemoryLoad } from "~src/processor/c-ast/memory";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
+import { SharedWasmGlobalVariables } from "~src/modules";
 
+export interface RuntimeMemoryWrite {
+  type: "RuntimeMemoryWrite";
+  address: Address | ConstantP;
+  value: ConstantP;
+  datatype: ScalarCDataType;
+}
 
 export class Runtime {
   private readonly control: Control;
@@ -81,45 +88,73 @@ export class Runtime {
   }
 
   // MEMORY
-  memoryWrite(address: Address | ConstantP, value: ConstantP, datatype: ScalarCDataType) : Runtime {
-    switch(address.type) {
-      case "LocalAddress": {
-        const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.basePointer.value) + address.offset.value;
-        return new Runtime(this.control, this.stash, this.memory.write(writeAddress, value, datatype));
-      }
-
-      case "DataSegmentAddress": {
-        const writeAddress = address.offset.value;
-        return new Runtime(this.control, this.stash, this.memory.write(writeAddress, value, datatype));
-      }
-      
-      case "IntegerConstant": {
-        const writeAddress = address.value
-        return new Runtime(this.control, this.stash, this.memory.write(writeAddress, value, datatype));
-      }
-      
-      case "ReturnObjectAddress": {
-        if(address.subtype === "load") {
-          throw new Error("Return object load instruction found in memory write")
+  memoryWrite(writes: RuntimeMemoryWrite[]) : Runtime {
+    const memoryWriteInterfaceArray : MemoryWriteInterface[] = writes.map(writeObject => {
+      switch(writeObject.address.type) {
+        case "LocalAddress": {
+          const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.basePointer.value) + writeObject.address.offset.value;
+          return {
+            type: "MemoryWriteInterface",
+            address: writeAddress,
+            value: writeObject.value,
+            dataType: writeObject.datatype
+          };
         }
-        const writeAddress = address.offset.value;
-        return new Runtime(this.control, this.stash, this.memory.write(writeAddress, value, datatype));
+    
+        case "DataSegmentAddress": {
+          const writeAddress = writeObject.address.offset.value;
+          return {
+            type: "MemoryWriteInterface",
+            address: writeAddress,
+            value: writeObject.value,
+            dataType: writeObject.datatype
+          };
+        }
+        
+        case "IntegerConstant": {
+          const writeAddress = writeObject.address.value
+          return {
+            type: "MemoryWriteInterface",
+            address: writeAddress,
+            value: writeObject.value,
+            dataType: writeObject.datatype
+          };
+        }
+        
+        case "ReturnObjectAddress": {
+          if(writeObject.address.subtype === "load") {
+            throw new Error("Return object load instruction found in memory write")
+          }
+          const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.basePointer.value) + writeObject.address.offset.value;
+          
+          return {
+            type: "MemoryWriteInterface",
+            address: writeAddress,
+            value: writeObject.value,
+            dataType: writeObject.datatype
+          };
+        }
+    
+        case "DynamicAddress": {
+          throw new Error("Dynamic address should not be processed in memory write");
+        }
+    
+        case "FunctionTableIndex": {
+          // TODO: Figur out later
+          throw new Error("Havent implemented")
+        }
+    
+        case "FloatConstant": {
+          throw new Error("Cannot access an address whose value is a float");
+        }
       }
+    })    
 
-      case "DynamicAddress": {
-        throw new Error("Dynamic address should not be processed in memory write");
-      }
-
-      case "FunctionTableIndex": {
-        // TODO: Figur out later
-        throw new Error("Havent implemented")
-      }
-
-      case "FloatConstant": {
-        throw new Error("Cannot access an address whose value is a float");
-      }
-
-    }
+    return new Runtime(
+      this.control,
+      this.stash,
+      this.memory.write(memoryWriteInterfaceArray)
+    )
   }
 
   memoryLoad(address: Address | ConstantP, dataType: ScalarCDataType) {
@@ -134,20 +169,30 @@ export class Runtime {
 
       case "DataSegmentAddress": {
         const writeAddress = address.offset.value;
-        return this.pushValue(this.memory.load(writeAddress, dataType));
+        const value = this.memory.load(writeAddress, dataType);
+        const [ _, newRuntime ] = this.popValue();
+
+        return newRuntime.pushValue(value);
       }
       
       case "IntegerConstant": {
         const writeAddress = address.value
-        return this.pushValue(this.memory.load(writeAddress, dataType));
+        const value = this.memory.load(writeAddress, dataType);
+        const [ _, newRuntime ] = this.popValue();
+
+        return newRuntime.pushValue(value);
       }
       
       case "ReturnObjectAddress": {
-        if(address.subtype === "load") {
-          throw new Error("Return object load instruction found in memory write")
+        if(address.subtype === "store") {
+          throw new Error("Return object store instruction found in memory load")
         }
-        const writeAddress = address.offset.value;
-        return this.pushValue(this.memory.load(writeAddress, dataType));
+        const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.stackPointer.value) + address.offset.value;
+
+        const value = this.memory.load(writeAddress, dataType);
+        const [ _, newRuntime ] = this.popValue();
+
+        return newRuntime.pushValue(value);
       }
 
       case "DynamicAddress": {
@@ -166,6 +211,32 @@ export class Runtime {
     }
   }
 
+  stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number): Runtime {
+    const newMemory = this.memory.stackFrameSetup(sizeOfParams, sizeOfLocals, sizeOfReturn);
+
+    return new Runtime(
+      this.control,
+      this.stash,
+      newMemory
+    )
+  }
+
+  stackFrameTearDown(stackPointer: number, basePointer: number) {
+    const newMemory = this.memory.stackFrameTearDown(stackPointer, basePointer);
+
+    return new Runtime(
+      this.control,
+      this.stash,
+      newMemory
+    )
+  }
+
+  getPointers() : SharedWasmGlobalVariables {
+    return this.memory.sharedWasmGlobalVariables;
+  }
+
+
+  // Control functions
   // function to push general instruction/CNodeP onto the control
   push(item: ControlItem[]): Runtime {
     return new Runtime(
@@ -191,6 +262,8 @@ export class Runtime {
     );
   }
   
+  // STASH FUNCTIONS
+
   pushValue(value: StashItem): Runtime {
     return new Runtime(
       this.control,
@@ -228,13 +301,39 @@ export class Runtime {
       )
     ];
   }
-  
+
   hasCompleted(): boolean {
     return this.control.isEmpty();
   }
 
   getResult(): any {
     return this.stash.isEmpty() ? null : this.stash.peek();
+  }
+
+  peekControl(): ControlItem {
+    return this.control.peek();
+  }
+
+  popControl(): [ControlItem, Runtime] {
+    const [popedItem, newControl] = this.control.pop();
+    const newRuntime = new Runtime(
+      newControl,
+      this.stash,
+      this.memory
+    )
+
+    if(popedItem === undefined) {
+      throw new Error("Cannot pop control: no elements left");
+    }
+
+    return [popedItem, newRuntime];
+  }
+
+  log(): void {
+    console.log("Stash")
+    console.log(this.stash);
+    console.log("Control")
+    console.log(this.control);
   }
 
   toString(): string {

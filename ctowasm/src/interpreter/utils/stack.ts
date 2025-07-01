@@ -46,11 +46,22 @@ export class Stack<T, R = any> implements ImmutableStack<T, R> {
     return this.items[idx];
   }
 
-  peek(): T | undefined {
+  peek(): T {
     if (this.isEmpty()) {
-      return undefined;
+      throw new Error("Cannot peek: stack is empty.")
     }
     return this.items[this.items.length - 1];
+  }
+  /**
+   * Returns a subarray of the last `depth` elements from the stack.
+   * If depth is greater than the stack size, returns the whole stack.
+   */
+  peekLast(depth: number): ReadonlyArray<T> {
+    if(this.items.length < depth) {
+      throw new Error("PeekLast out of bounds")
+    }
+
+    return this.items.slice(this.items.length - depth);
   }
 
   size(): number {

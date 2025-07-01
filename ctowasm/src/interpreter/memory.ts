@@ -3,10 +3,16 @@ import { KB, WASM_PAGE_IN_HEX } from "~src/common/constants";
 import { calculateNumberOfPagesNeededForBytes, isFloatType, isIntegerType, primaryDataTypeSizes } from "~src/common/utils";
 import { WASM_ADDR_TYPE } from "~src/translator/memoryUtil";
 import { SharedWasmGlobalVariables } from "~src/modules";
-import { Address } from "~src/processor/c-ast/memory";
 import { FloatDataType, IntegerDataType, ScalarCDataType } from "~src/common/types";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { convertConstantToByteStr } from "~src/processor/byteStrUtil";
+
+export interface MemoryWriteInterface {
+  type: "MemoryWriteInterface",
+  address: bigint,
+  value: ConstantP,
+  dataType: ScalarCDataType
+}
 
 export function parseByteStr(byteStr: string) : Uint8Array {
   const matches = byteStr.match(/\\([0-9a-fA-F]{2})/g)
@@ -29,103 +35,9 @@ export class Memory {
   dataSegmentByteStr: string;
   heapBuffer: number // Heap size limit in bytes
   stackBuffer: number // Stacks size limit in bytes
-
+  
   sharedWasmGlobalVariables: SharedWasmGlobalVariables;
   
-  // sets the values for stack pointer, base pointer, heap pointer
-  setPointers(stackPointer: number, basePointer: number, heapPointer: number) {
-    this.sharedWasmGlobalVariables = {
-      stackPointer: new WebAssembly.Global(
-        { value: WASM_ADDR_TYPE, mutable: true },
-        stackPointer,
-      ),
-      basePointer: new WebAssembly.Global(
-        { value: WASM_ADDR_TYPE, mutable: true },
-        basePointer,
-      ),
-      heapPointer: new WebAssembly.Global(
-        { value: WASM_ADDR_TYPE, mutable: true },
-        heapPointer,
-      )
-    };
-  }
-
-  checkOutOfBounds(address: bigint, size: bigint) {
-    return address < 0 || address >= this.memory.buffer.byteLength || address + size < 0 || address + size > this.memory.buffer.byteLength; 
-  }
-
-  // function to write a data type with a value to the memory in the address
-  write(address: bigint, value: ConstantP, datatype: ScalarCDataType) : Memory {
-    const bytestr = convertConstantToByteStr(value, datatype);
-    const byteArray = parseByteStr(bytestr);
-
-    if(this.checkOutOfBounds(address, BigInt(byteArray.length))) {
-      throw new Error("Memory out of bounds");
-    }
-    const newMemory = this.clone();
-    const newMemoryView = new Uint8Array(newMemory.memory.buffer);
-    for(let i = 0; i < byteArray.length; i++) {
-      newMemoryView[i + Number(address)] = byteArray[i];
-    }
-
-    return newMemory;
-  }
-
-  load(address: bigint, datatype: ScalarCDataType) : ConstantP {
-    // TODO: This needs to be fixed
-    if(datatype === "pointer") {
-      datatype = "unsigned int"
-    }
-    
-    const size = primaryDataTypeSizes[datatype];
-    this.checkOutOfBounds(address, BigInt(size));
-    
-    let view = new Uint8Array(this.memory.buffer);
-    if(isIntegerType(datatype)) {
-      datatype as IntegerDataType;
-
-      let value = 0n;
-      for (let i = 0; i < size; i++) {
-        value |= BigInt(view[Number(address) + i]) << BigInt(8 * i);
-      }
-      
-      const signBit = 1n << BigInt(size * 8 - 1);
-      const fullMask = 1n << BigInt(size * 8);
-
-      if(value & signBit) {
-        value = value - fullMask
-      } else {
-        value = value;
-      }
-
-      const res : ConstantP = {
-        type: "IntegerConstant",
-        value: value,
-        dataType: datatype
-      }
-      return res;
-
-    } else if(isFloatType(datatype)) {
-      datatype as FloatDataType;
-
-      let view = new Uint8Array(this.memory.buffer);
-      const raw = view.slice(Number(address), Number(address) + size)
-      const floatValue = datatype === "float" 
-                            ? new Float32Array(raw.buffer, raw.byteOffset)[0] 
-                            : new Float64Array(raw.buffer, raw.byteOffset)[0];
-      
-      const res : ConstantP = {
-        type: "FloatConstant",
-        value: floatValue,
-        dataType: datatype,
-      }       
-      return res;
-
-    } else {
-      throw new Error("Unknown load value type");
-    }
-  }
-
   // Constructor to initiate the first runtime object
   constructor(
     dataSegmentByteStr: string, // The string of bytes (each byte is in the form "\\XX" where X is a digit in base-16) to initialize the data segment with, determined by processing initializers for data segment variables.
@@ -166,13 +78,140 @@ export class Memory {
     for(let i = 0;i < dataSegmentByteArray.length;i++) {
       view[i] = dataSegmentByteArray[i];
     }
-
-    // test
-    const first8Bytes = view.slice(8);
-    const dataView = new DataView(first8Bytes.buffer, first8Bytes.byteOffset, first8Bytes.byteLength);
-    const longValue = dataView.getBigInt64(0, true); // little-endian
-    console.log("First 8 bytes as long:", longValue.toString());
   }
+
+  // sets the values for stack pointer, base pointer, heap pointer
+  setPointers(stackPointer: number, basePointer: number, heapPointer: number) {
+    if(heapPointer > stackPointer) {
+      throw new Error("Segmentation fault: Heap pointer clashed with stack pointer");
+    }
+    
+    this.sharedWasmGlobalVariables = {
+      stackPointer: new WebAssembly.Global(
+        { value: WASM_ADDR_TYPE, mutable: true },
+        stackPointer,
+      ),
+      basePointer: new WebAssembly.Global(
+        { value: WASM_ADDR_TYPE, mutable: true },
+        basePointer,
+      ),
+      heapPointer: new WebAssembly.Global(
+        { value: WASM_ADDR_TYPE, mutable: true },
+        heapPointer,
+      )
+    };
+  }
+
+  stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number): Memory {
+    const newMemory = this.clone();
+    const totalSize = sizeOfParams + sizeOfLocals + sizeOfReturn;
+    
+    const SP = this.sharedWasmGlobalVariables.stackPointer.value - totalSize;
+    const BP = this.sharedWasmGlobalVariables.stackPointer.value - sizeOfReturn;
+    
+    newMemory.setPointers(
+      SP,
+      BP,
+      this.sharedWasmGlobalVariables.heapPointer.value
+    )
+
+    return newMemory;
+  }
+
+  stackFrameTearDown(stackPointer: number, basePointer: number): Memory {
+    const newMemory = this.clone();
+    newMemory.setPointers(
+      stackPointer,
+      basePointer,
+      this.sharedWasmGlobalVariables.heapPointer.value
+    )
+
+    return newMemory;
+  }
+
+  checkOutOfBounds(address: bigint) {
+    return address < 0 || address >= this.memory.buffer.byteLength; 
+  }
+
+  // function to write a data type with a value to the memory in the address
+  write(values: MemoryWriteInterface[]) : Memory {
+    const newMemory = this.clone();
+    const newMemoryView = new Uint8Array(newMemory.memory.buffer);
+
+    for(const value of values) {
+      const bytestr = convertConstantToByteStr(value.value, value.dataType);
+      const byteArray = parseByteStr(bytestr);
+  
+      if(this.checkOutOfBounds(value.address)) {
+        console.log(value.address);
+        console.log(byteArray.length);
+        console.log(bytestr);
+        console.log(value.dataType);
+        throw new Error("Memory out of bounds");
+      }
+      for(let i = 0; i < Math.min(byteArray.length, this.memory.buffer.byteLength - Number(value.address)); i++) {
+        newMemoryView[i + Number(value.address)] = byteArray[i];
+      }
+    }
+
+    return newMemory;
+  }
+
+  load(address: bigint, datatype: ScalarCDataType) : ConstantP {
+    // TODO: This needs to be fixed
+    if(datatype === "pointer") {
+      datatype = "unsigned int"
+    }
+    
+    const size = primaryDataTypeSizes[datatype];
+    this.checkOutOfBounds(address);
+    
+    let view = new Uint8Array(this.memory.buffer);
+    if(isIntegerType(datatype)) {
+      datatype as IntegerDataType;
+
+      let value = 0n;
+      for (let i = 0; i < Math.min(size, this.memory.buffer.byteLength - Number(address)); i++) {
+        value |= BigInt(view[Number(address) + i]) << BigInt(8 * i);
+      }
+      
+      const signBit = 1n << BigInt(size * 8 - 1);
+      const fullMask = 1n << BigInt(size * 8);
+
+      if(value & signBit) {
+        value = value - fullMask
+      } else {
+        value = value;
+      }
+
+      const res : ConstantP = {
+        type: "IntegerConstant",
+        value: value,
+        dataType: datatype
+      }
+      return res;
+
+    } else if(isFloatType(datatype)) {
+      datatype as FloatDataType;
+
+      let view = new Uint8Array(this.memory.buffer);
+      const raw = view.slice(Number(address), Number(address) + size)
+      const floatValue = datatype === "float" 
+                            ? new Float32Array(raw.buffer, raw.byteOffset)[0] 
+                            : new Float64Array(raw.buffer, raw.byteOffset)[0];
+      
+      const res : ConstantP = {
+        type: "FloatConstant",
+        value: floatValue,
+        dataType: datatype,
+      }       
+      return res;
+
+    } else {
+      throw new Error("Unknown load value type");
+    }
+  }
+
 
   clone() : Memory {
     const clone = new Memory(
