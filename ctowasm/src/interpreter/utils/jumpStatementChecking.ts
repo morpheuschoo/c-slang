@@ -28,8 +28,8 @@ export function containsContinueStatement(stmt: CNodeP | CNodeP[]): boolean {
     case "ContinueStatement":
       return true;
     case "SelectionStatement":
-      return containsBreakStatement(stmt.ifStatements) || 
-        (stmt.elseStatements ? containsBreakStatement(stmt.elseStatements) : false);
+      return containsContinueStatement(stmt.ifStatements) || 
+        (stmt.elseStatements ? containsContinueStatement(stmt.elseStatements) : false);
     default:
       return false;
   }

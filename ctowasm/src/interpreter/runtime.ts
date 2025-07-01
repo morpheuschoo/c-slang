@@ -169,7 +169,7 @@ export class Runtime {
   // function to push general instruction/CNodeP onto the control
   push(item: ControlItem[]): Runtime {
     return new Runtime(
-      this.control.concat(item.reverse()),
+      this.control.concat([...item].reverse()),
       this.stash,
       this.memory,
     );
@@ -177,7 +177,7 @@ export class Runtime {
   
   pushNode(node: CNodeP[]): Runtime {
     return new Runtime(
-      this.control.concat(node.reverse()),
+      this.control.concat([...node].reverse()),
       this.stash,
       this.memory,
     );
@@ -185,7 +185,7 @@ export class Runtime {
   
   pushInstruction(instruction: Instruction[]): Runtime {
     return new Runtime(
-      this.control.concat(instruction.reverse()),
+      this.control.concat([...instruction].reverse()),
       this.stash,
       this.memory,
     );

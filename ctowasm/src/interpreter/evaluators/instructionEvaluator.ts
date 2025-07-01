@@ -15,12 +15,14 @@ import {
   isCaseMarkInstruction,
   doCaseInstructionsMatch,
   isDefaultCaseInstruction,
+  ContinueMarkInstruction,
+  continueMarkInstruction,
  } from "~src/interpreter/controlItems/instructions";
 import { performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
 import { isIntegerType } from "~src/common/utils";
 import { getAdjustedIntValueAccordingToDataType } from "~src/processor/processConstant";
 import { FloatDataType, IntegerDataType, UnaryOperator } from "~src/common/types";
-import { Stash, StashItem } from "~src/interpreter/utils/stash";
+import { Stash } from "~src/interpreter/utils/stash";
 import { isConstantTrue, performConstantBinaryOperation } from "~src/interpreter/utils/operations"
 
 export const InstructionEvaluator: {
@@ -107,7 +109,7 @@ export const InstructionEvaluator: {
   },
 
   [InstructionType.WHILE]: (runtime: Runtime, instruction: WhileLoopInstruction): Runtime => {
-    const [condition, runtimeWithPoppedValue] = runtime.popValue();
+    let [condition, updatedRuntime] = runtime.popValue();
 
     if (!Stash.isConstant(condition)) {
       throw new Error("While instruction expects a boolean")
@@ -116,22 +118,21 @@ export const InstructionEvaluator: {
     const isTrue = isConstantTrue(condition);
 
     if (!isTrue) {
-      return runtimeWithPoppedValue;
+      return updatedRuntime;
     }
-    return runtimeWithPoppedValue.push([
+    
+    updatedRuntime = updatedRuntime.push([
       instruction.condition,
       instruction
-    ]).push(instruction.body);
+    ]);
 
+    if (instruction.hasContinue) {
+      updatedRuntime = updatedRuntime.push([continueMarkInstruction()]);
+    }
+
+    return updatedRuntime.push(instruction.body);
   },
 
-  [InstructionType.BREAK_MARK]: (runtime: Runtime, instruction: BreakMarkInstruction): Runtime => {
-    return runtime;
-  },
-
-  /**
-   * TODO: cleanup code
-   */
   [InstructionType.CASE_JUMP]: (runtime: Runtime, instruction: CaseJumpInstruction): Runtime => {
     const [right, runtimeAfterPopRight] = runtime.popValue();
     
@@ -178,5 +179,13 @@ export const InstructionEvaluator: {
 
   [InstructionType.CASE_MARK]: (runtime: Runtime, instruction: CaseMarkInstruction): Runtime => {
     return runtime;
-  }
+  },
+
+  [InstructionType.CONTINUE_MARK]: (runtime: Runtime, instruction: ContinueMarkInstruction): Runtime => {
+    return runtime;
+  },
+
+  [InstructionType.BREAK_MARK]: (runtime: Runtime, instruction: BreakMarkInstruction): Runtime => {
+    return runtime;
+  },
 };

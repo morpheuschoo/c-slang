@@ -3,9 +3,11 @@ import {
   binaryOpInstruction, 
   branchOpInstruction, 
   breakMarkInstruction, 
+  continueMarkInstruction, 
   createCaseInstructionPair, 
   createDefaultCaseInstructionPair, 
   isBreakMarkInstruction, 
+  isContinueMarkInstruction, 
   memoryLoadInstruction, 
   memoryStoreInstruction,  
   popInstruction, 
@@ -39,7 +41,7 @@ import {
   ForLoopP,
 } from "~src/processor/c-ast/statement/iterationStatement";
 import { ExpressionStatementP } from "~src/processor/c-ast/statement/expressionStatement";
-import { containsBreakStatement } from "~src/interpreter/utils/jumpStatementChecking";
+import { containsBreakStatement, containsContinueStatement } from "~src/interpreter/utils/jumpStatementChecking";
 import { ControlItem } from "~src/interpreter/utils/control";
 
 export const NodeEvaluator: { 
@@ -68,27 +70,42 @@ export const NodeEvaluator: {
   // === ITERATION STATEMENTS ===
 
   DoWhileLoop: (runtime: Runtime, node: DoWhileLoopP): Runtime => {
-    let pRuntime = runtime;
-    if (containsBreakStatement(node.body)) {
-      pRuntime = runtime.push([breakMarkInstruction()]);
-    }
+    const hasBreak = containsBreakStatement(node.body);
+    const hasContinue = containsContinueStatement(node.body);
     
-    return pRuntime.push([
+    let pRuntime = runtime;
+    
+    if (hasBreak) {
+      pRuntime = pRuntime.push([breakMarkInstruction()]);
+    }
+
+    pRuntime = pRuntime.push([
       node.condition,
-      whileLoopInstruction(node.condition, node.body),
-    ]).push(node.body)
+      whileLoopInstruction(node.condition, node.body, hasContinue)
+    ]);
+
+    if (hasContinue) {
+      pRuntime = pRuntime.push([continueMarkInstruction()]);
+    }
+
+    return pRuntime.push([...node.body])
   },
 
   WhileLoop: (runtime: Runtime, node: WhileLoopP): Runtime => {
-    let pRuntime = runtime;
-    if (containsBreakStatement(node.body)) {
-      pRuntime = runtime.push([breakMarkInstruction()]);
-    }
+    const hasBreak = containsBreakStatement(node.body);
+    const hasContinue = containsContinueStatement(node.body);
     
-    return pRuntime.push([
-      node.condition,
-      whileLoopInstruction(node.condition, node.body),
+    let pRuntime = runtime;
+    
+    if (hasBreak) {
+      pRuntime = pRuntime.push([breakMarkInstruction()]);
+    }
+
+    pRuntime = pRuntime.push([
+      whileLoopInstruction(node.condition, node.body, hasContinue)
     ]);
+    
+    return pRuntime.push([node.condition]);
   },
 
   // TODO
@@ -118,15 +135,31 @@ export const NodeEvaluator: {
     }
     
     if (!foundBreakMark) {
-      throw new Error("Unable to locate break statement");
+      throw new Error("Unable to locate break mark");
     }
 
     return currRuntime;
   },
 
-  // TODO
   ContinueStatement: (runtime: Runtime, node: ContinueStatementP): Runtime => {
-    return new Runtime();
+    let currRuntime = runtime;
+    let foundContinueMark = false;
+
+    while (!currRuntime.isControlEmpty()) {
+      const [item, newRuntime] = currRuntime.popNode();
+      currRuntime = newRuntime;
+
+      if (isContinueMarkInstruction(item)) {
+        foundContinueMark = true;
+        break;
+      }
+    }
+    
+    if (!foundContinueMark) {
+      throw new Error("Unable to locate continue mark");
+    }
+
+    return currRuntime;
   },
 
   /**

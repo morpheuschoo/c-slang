@@ -32,7 +32,8 @@ export class Control extends Stack<ControlItem, Control> {
           item.type === InstructionType.WHILE ||
           item.type === InstructionType.MEMORY_LOAD ||
           item.type === InstructionType.MEMORY_STORE ||
-          item.type === InstructionType.BREAK_MARK
+          item.type === InstructionType.BREAK_MARK ||
+          item.type === InstructionType.CONTINUE_MARK
         ) {
           result += `  ${itemPosition}. [Instruction] ${item.type}\n`;
         } else if (

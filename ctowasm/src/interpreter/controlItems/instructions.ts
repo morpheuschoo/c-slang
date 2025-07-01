@@ -16,6 +16,7 @@ export enum InstructionType {
   BREAK_MARK = "BREAK_MARK",
   CASE_JUMP = "CASE_JUMP",
   CASE_MARK = "CASE_MARK",
+  CONTINUE_MARK = "CONTINUE_MARK",
 }
 
 export interface BaseInstruction {
@@ -90,12 +91,18 @@ export interface WhileLoopInstruction extends BaseInstruction {
   type: InstructionType.WHILE;
   condition: ExpressionP;
   body: CNodeP[];
+  hasContinue: boolean;
 }
 
-export const whileLoopInstruction = (condition: ExpressionP, body: CNodeP[]): WhileLoopInstruction => ({
+export const whileLoopInstruction = (
+  condition: ExpressionP, 
+  body: CNodeP[], 
+  hasContinue: boolean
+): WhileLoopInstruction => ({
   type: InstructionType.WHILE,
   condition,
   body,
+  hasContinue,
 })
 
 export interface BreakMarkInstruction extends BaseInstruction {
@@ -111,6 +118,21 @@ export function isBreakMarkInstruction(
   : i is BreakMarkInstruction {
     return isInstruction(i) && i.type == InstructionType.BREAK_MARK;
 }
+
+export interface ContinueMarkInstruction extends BaseInstruction {
+  type: InstructionType.CONTINUE_MARK;
+}
+
+export const continueMarkInstruction = (): ContinueMarkInstruction => ({
+  type: InstructionType.CONTINUE_MARK,
+})
+
+export function isContinueMarkInstruction(
+  i: ControlItem)
+  : i is ContinueMarkInstruction {
+    return isInstruction(i) && i.type == InstructionType.CONTINUE_MARK;
+}
+
 
 export interface CaseJumpInstruction extends BaseInstruction {
   type: InstructionType.CASE_JUMP;
@@ -182,7 +204,8 @@ export type Instruction =
   | WhileLoopInstruction
   | BreakMarkInstruction
   | CaseJumpInstruction
-  | CaseMarkInstruction;
+  | CaseMarkInstruction
+  | ContinueMarkInstruction;
 
 export const isInstruction = (item: any): item is Instruction => {
   return item && typeof item === 'object' && 'type' in item && 
