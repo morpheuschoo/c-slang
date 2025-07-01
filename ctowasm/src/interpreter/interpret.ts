@@ -26,7 +26,7 @@ export class Interpreter {
     
     let currentRuntime = initialRuntime;
     
-    while (!currentRuntime.hasCompleted()) {  
+    while (!currentRuntime.hasCompleted()) {
       currentRuntime = currentRuntime.next();
       this.runtimeStack.push(currentRuntime);
     }

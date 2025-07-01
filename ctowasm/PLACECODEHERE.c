@@ -1,6 +1,9 @@
 int main() {
-  int i = 10;
+  int i = 0;
   do {
-    i++;
-  } while (i < 5);
+    1;
+    continue;
+    break;
+    2;
+  } while (i < 0);
 }

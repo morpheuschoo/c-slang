@@ -2,6 +2,12 @@ import { Runtime } from "~src/interpreter/runtime";
 import {  
   binaryOpInstruction, 
   branchOpInstruction, 
+  breakMarkInstruction, 
+  continueMarkInstruction, 
+  createCaseInstructionPair, 
+  createDefaultCaseInstructionPair, 
+  isBreakMarkInstruction, 
+  isContinueMarkInstruction, 
   memoryLoadInstruction, 
   memoryStoreInstruction,  
   popInstruction, 
@@ -21,8 +27,8 @@ import {
   PostStatementExpressionP,
   ConditionalExpressionP,
 } from "~src/processor/c-ast/expression/expressions";
-import { Address, LocalAddress, MemoryLoad, MemoryStore, ReturnObjectAddress } from "~src/processor/c-ast/memory";
-import { FunctionCallP, FunctionDefinitionP } from "~src/processor/c-ast/function";
+import { LocalAddress, MemoryLoad, MemoryStore, ReturnObjectAddress } from "~src/processor/c-ast/memory";
+import { FunctionCallP } from "~src/processor/c-ast/function";
 import { 
   BreakStatementP, 
   ContinueStatementP, 
@@ -35,6 +41,8 @@ import {
   ForLoopP,
 } from "~src/processor/c-ast/statement/iterationStatement";
 import { ExpressionStatementP } from "~src/processor/c-ast/statement/expressionStatement";
+import { containsBreakStatement, containsContinueStatement } from "~src/interpreter/utils/jumpStatementChecking";
+import { ControlItem } from "~src/interpreter/utils/control";
 
 export const NodeEvaluator: { 
   [Type in CNodeType]?: (
@@ -62,17 +70,42 @@ export const NodeEvaluator: {
   // === ITERATION STATEMENTS ===
 
   DoWhileLoop: (runtime: Runtime, node: DoWhileLoopP): Runtime => {
-    return runtime.push([
+    const hasBreak = containsBreakStatement(node.body);
+    const hasContinue = containsContinueStatement(node.body);
+    
+    let pRuntime = runtime;
+    
+    if (hasBreak) {
+      pRuntime = pRuntime.push([breakMarkInstruction()]);
+    }
+
+    pRuntime = pRuntime.push([
       node.condition,
-      whileLoopInstruction(node.condition, node.body),
-    ]).push(node.body)
+      whileLoopInstruction(node.condition, node.body, hasContinue)
+    ]);
+
+    if (hasContinue) {
+      pRuntime = pRuntime.push([continueMarkInstruction()]);
+    }
+
+    return pRuntime.push([...node.body])
   },
 
   WhileLoop: (runtime: Runtime, node: WhileLoopP): Runtime => {
-    return runtime.push([
-      node.condition,
-      whileLoopInstruction(node.condition, node.body),
+    const hasBreak = containsBreakStatement(node.body);
+    const hasContinue = containsContinueStatement(node.body);
+    
+    let pRuntime = runtime;
+    
+    if (hasBreak) {
+      pRuntime = pRuntime.push([breakMarkInstruction()]);
+    }
+
+    pRuntime = pRuntime.push([
+      whileLoopInstruction(node.condition, node.body, hasContinue)
     ]);
+    
+    return pRuntime.push([node.condition]);
   },
 
   // TODO
@@ -87,19 +120,91 @@ export const NodeEvaluator: {
     return runtime;
   },
 
-  // TODO
   BreakStatement: (runtime: Runtime, node: BreakStatementP): Runtime => {
-    return new Runtime();
+    let currRuntime = runtime;
+    let foundBreakMark = false;
+
+    while (!currRuntime.isControlEmpty()) {
+      const [item, newRuntime] = currRuntime.popNode();
+      currRuntime = newRuntime;
+
+      if (isBreakMarkInstruction(item)) {
+        foundBreakMark = true;
+        break;
+      }
+    }
+    
+    if (!foundBreakMark) {
+      throw new Error("Unable to locate break mark");
+    }
+
+    return currRuntime;
   },
 
-  // TODO
   ContinueStatement: (runtime: Runtime, node: ContinueStatementP): Runtime => {
-    return new Runtime();
+    let currRuntime = runtime;
+    let foundContinueMark = false;
+
+    while (!currRuntime.isControlEmpty()) {
+      const [item, newRuntime] = currRuntime.popNode();
+      currRuntime = newRuntime;
+
+      if (isContinueMarkInstruction(item)) {
+        foundContinueMark = true;
+        break;
+      }
+    }
+    
+    if (!foundContinueMark) {
+      throw new Error("Unable to locate continue mark");
+    }
+
+    return currRuntime;
   },
 
-  // TODO
+  /**
+   * https://stackoverflow.com/questions/68406541/how-cases-get-evaluated-in-switch-statements-c
+   * No default statement body not tested yet
+   * 
+   * TODO: 
+   * 2. redundant case marks need to be skipped
+   * 3. redundant break marks need to be skipped
+   */
   SwitchStatement: (runtime: Runtime, node: SwitchStatementP): Runtime => {
-    return new Runtime();
+    const hasBreak = containsBreakStatement(
+      [...node.cases.flatMap(c => c.statements), ...node.defaultStatements]
+    )
+
+    let conditions: ControlItem[] = [];
+    let statements: ControlItem[] = [];
+    
+    for (let i = 0; i < node.cases.length; i++) {
+      const caseItem = node.cases[i];
+      const casePair = createCaseInstructionPair(i);
+      
+      conditions.push(caseItem.condition.rightExpr);
+      conditions.push(casePair.jumpInstruction);
+
+      statements.push(casePair.markInstruction);
+      statements.push(...caseItem.statements);
+    }
+
+     if (node.defaultStatements) {
+      const defaultPair = createDefaultCaseInstructionPair();
+      
+      conditions.push(defaultPair.jumpInstruction);
+      
+      statements.push(defaultPair.markInstruction);
+      statements.push(...node.defaultStatements);
+    }
+
+    let updatedRuntime = runtime;
+
+    if (hasBreak) {
+      updatedRuntime = updatedRuntime.push([breakMarkInstruction()]);
+    }
+
+    return updatedRuntime.push(statements).push(conditions).push([node.targetExpression]);
   },
 
   LocalAddress: (runtime: Runtime, node: LocalAddress): Runtime => {

@@ -169,7 +169,7 @@ export class Runtime {
   // function to push general instruction/CNodeP onto the control
   push(item: ControlItem[]): Runtime {
     return new Runtime(
-      this.control.concat(item.reverse()),
+      this.control.concat([...item].reverse()),
       this.stash,
       this.memory,
     );
@@ -177,7 +177,7 @@ export class Runtime {
   
   pushNode(node: CNodeP[]): Runtime {
     return new Runtime(
-      this.control.concat(node.reverse()),
+      this.control.concat([...node].reverse()),
       this.stash,
       this.memory,
     );
@@ -185,7 +185,7 @@ export class Runtime {
   
   pushInstruction(instruction: Instruction[]): Runtime {
     return new Runtime(
-      this.control.concat(instruction.reverse()),
+      this.control.concat([...instruction].reverse()),
       this.stash,
       this.memory,
     );
@@ -199,10 +199,25 @@ export class Runtime {
     );
   }
   
+  popNode(): [ControlItem, Runtime] {
+    const [node, newControl] = this.control.pop();
+    if(node === undefined) {
+      throw new Error("Undefined popped node");
+    }
+    return [
+      node, 
+      new Runtime(
+        newControl,
+        this.stash,
+        this.memory,
+      )
+    ];
+  }
+
   popValue(): [StashItem, Runtime] {
     const [value, newStash] = this.stash.pop();
     if(value === undefined) {
-      throw new Error("Undefined poped stash value");
+      throw new Error("Undefined popped stash value");
     }
     return [
       value, 
@@ -244,5 +259,9 @@ export class Runtime {
     result += this.memory.getFormattedMemoryView();
 
     return result;
+  }
+
+  isControlEmpty(): boolean {
+    return this.control.isEmpty();
   }
 }
