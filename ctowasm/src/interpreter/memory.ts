@@ -6,6 +6,7 @@ import { SharedWasmGlobalVariables } from "~src/modules";
 import { FloatDataType, IntegerDataType, ScalarCDataType } from "~src/common/types";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { convertConstantToByteStr } from "~src/processor/byteStrUtil";
+import { Runtime } from "./runtime";
 
 export interface MemoryWriteInterface {
   type: "MemoryWriteInterface",
@@ -81,6 +82,47 @@ export class Memory {
   }
 
   // sets the values for stack pointer, base pointer, heap pointer
+  
+  // Coppies the current memory buffer and pointers on to Global Modules memory
+  writeToModuleMemory() {
+    const memoryView = new Uint8Array(this.memory.buffer);
+    const moduleView = new Uint8Array(Runtime.modules.memory.buffer);
+
+    if(memoryView.length !== moduleView.length) {
+      throw new Error(`Memory size mismatch: interpreter memory length (${memoryView.length}) does not match module memory length (${moduleView.length})`);
+    }
+
+    for(let i = 0;i < memoryView.byteLength;i++) {
+      moduleView[i] = memoryView[i];
+    }
+
+    Runtime.modules.sharedWasmGlobalVariables.basePointer.value = this.sharedWasmGlobalVariables.basePointer.value;
+    Runtime.modules.sharedWasmGlobalVariables.heapPointer.value = this.sharedWasmGlobalVariables.heapPointer.value;
+    Runtime.modules.sharedWasmGlobalVariables.stackPointer.value = this.sharedWasmGlobalVariables.stackPointer.value;
+  }
+
+  // Create a new memory instance that has the same content as the modules memory
+  cloneModuleMemory(): Memory {
+    const resultMemory = this.clone();
+
+    const moduleView = new Uint8Array(Runtime.modules.memory.buffer);
+    const memoryView = new Uint8Array(resultMemory.memory.buffer);
+
+    if(memoryView.byteLength !== moduleView.byteLength) {
+      throw new Error(`Memory size mismatch: interpreter memory length (${memoryView.length}) does not match module memory length (${moduleView.length})`);
+    }
+
+    for(let i = 0;i < memoryView.byteLength;i++) {
+      memoryView[i] = moduleView[i];
+    }
+
+    resultMemory.sharedWasmGlobalVariables.basePointer.value = Runtime.modules.sharedWasmGlobalVariables.basePointer.value;
+    resultMemory.sharedWasmGlobalVariables.heapPointer.value = Runtime.modules.sharedWasmGlobalVariables.heapPointer.value;
+    resultMemory.sharedWasmGlobalVariables.stackPointer.value = Runtime.modules.sharedWasmGlobalVariables.stackPointer.value;
+  
+    return resultMemory;
+  }
+
   setPointers(stackPointer: number, basePointer: number, heapPointer: number) {
     if(heapPointer > stackPointer) {
       throw new Error("Segmentation fault: Heap pointer clashed with stack pointer");
