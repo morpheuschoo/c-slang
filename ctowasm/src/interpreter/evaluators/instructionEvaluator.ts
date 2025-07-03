@@ -19,15 +19,18 @@ import {
   continueMarkInstruction,
   CallInstruction,
   StackFrameTearDownInstruction,
+  FunctionIndexWrapper,
  } from "~src/interpreter/controlItems/instructions";
 import { getSizeOfScalarDataType, isIntegerType } from "~src/common/utils";
-import { DirectlyCalledFunction } from "~src/processor/c-ast/function";
-import { LocalAddress } from "~src/processor/c-ast/memory";
+import { FunctionTableIndex, LocalAddress, MemoryStore } from "~src/processor/c-ast/memory";
 import { performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
 import { getAdjustedIntValueAccordingToDataType } from "~src/processor/processConstant";
 import { FloatDataType, IntegerDataType, UnaryOperator } from "~src/common/types";
 import { StashItem, Stash } from "~src/interpreter/utils/stash";
 import { isConstantTrue, performConstantBinaryOperation } from "~src/interpreter/utils/operations"
+import { Module, ModuleFunction } from "~src/modules/types";
+import { ConstantP } from "~src/processor/c-ast/expression/constants";
+import { ReturnStatementP } from "~src/processor/c-ast/statement/jumpStatement";
 
 export const InstructionEvaluator: {
   [InstrType in Instruction["type"]]: (
@@ -117,25 +120,43 @@ export const InstructionEvaluator: {
     return newRuntime;
   },
 
+  [InstructionType.FUNCTIONINDEXWRAPPER]: (runtime: Runtime, instruction: FunctionIndexWrapper): Runtime => {
+    const [ index, popedRuntime ] = runtime.popControl();
+
+    if(index.type !== "IntegerConstant") {
+      throw new Error("Wrong type for function index value in Function index wrapper, expected: IntegerConstant");
+    }
+
+    const wrappedFunctionIndex : FunctionTableIndex = {
+      type: "FunctionTableIndex",
+      index: index,
+      dataType: "pointer"
+    }
+
+    const newRuntime = popedRuntime.push([wrappedFunctionIndex]);
+
+    return newRuntime;
+  },
+
   [InstructionType.CALLINSTRUCTION]: (runtime: Runtime, instruction: CallInstruction): Runtime => {
-    const numOfParameters = instruction.functionDetails.parameters.length;
+    let [ functionAddress, poppedRuntime ] = runtime.popValue();
     
-    let parameters: StashItem[] = [], popedRuntime = runtime;
+    const numOfParameters = instruction.functionDetails.parameters.length;
+    let parameters: StashItem[] = [];
     for(let i = 0;i < numOfParameters; i++) {
-      const [parameter, newRuntime] = popedRuntime.popValue();
+      const [parameter, newRuntime] = poppedRuntime.popValue();
 
       parameters.push(parameter);
-      popedRuntime = newRuntime;
+      poppedRuntime = newRuntime;
     }
     parameters.reverse();
 
-    if(instruction.calledFunction.type === "IndirectlyCalledFunction") {
-      throw new Error("Indirectly Called Function not implemented yet");
+    if(functionAddress.type !== "FunctionTableIndex") {
+      throw new Error("Wrong function pointer type in Call instruction");
     }
-
-    const calledFunction = instruction.calledFunction;
-    calledFunction as DirectlyCalledFunction;
-
+    
+    const calledFunction = Runtime.astRootP.functionTable[Number(functionAddress.index.value)];
+    
     if(calledFunction.functionName === "print_int") {
       const temp = parameters[0];
       if(temp.type !== "IntegerConstant") {
@@ -143,61 +164,145 @@ export const InstructionEvaluator: {
       }
 
       console.log("PRINTED VALUE: ", temp.value);
-      return popedRuntime;
+      return poppedRuntime;
     }
 
-    const func = Runtime.astRootP.functions.find(x => x.name === calledFunction.functionName);
-    if(!func) {
-      throw new Error("No function called: " + calledFunction.functionName);
-    }
-    
-    // internal functions (defined by user)
-    const sizeOfParams = instruction.functionDetails.sizeOfParams;
-    const sizeOfLocals = func.sizeOfLocals;
-    const sizeOfReturn = instruction.functionDetails.sizeOfReturn;
-
-    // Set up a new Stackframe
-    const newRuntime = popedRuntime.stackFrameSetup(
-      sizeOfParams,
-      sizeOfLocals,
-      sizeOfReturn
-    )
-    
-    let offset = 0;
-    // Write parameters into memory
-    const writeParameters : RuntimeMemoryWrite[] = parameters.map(writeObject => {
-      if(writeObject.type === "IntegerConstant" || writeObject.type === "FloatConstant") {
-        const size = getSizeOfScalarDataType(writeObject.dataType)
-        offset -= size;
-
-        const writeAddress : LocalAddress = {
-          type: "LocalAddress",
-          offset: {
-            type: "IntegerConstant",
-            value: BigInt(offset),
-            dataType: "unsigned int"
-          },
-          dataType: "pointer"
-        }
-
-        const res : RuntimeMemoryWrite = {
-          type: "RuntimeMemoryWrite",
-          address: writeAddress,
-          value: writeObject,
-          datatype: writeObject.dataType
-        }
-
-        return res;
-      } else {
-        throw new Error("Not implemented yet: pointers as function arguments");
+    if(Runtime.astRootP.functions.find(x => x.name === calledFunction.functionName)) {
+      const func = Runtime.astRootP.functions.find(x => x.name === calledFunction.functionName);
+      if(!func) {
+        throw new Error("No function called: " + calledFunction.functionName);
       }
-    })
-    const writtenRuntime = newRuntime.memoryWrite(writeParameters);
+      
+      // Set up a new Stackframe
+      const sizeOfParams = instruction.functionDetails.sizeOfParams;
+      const sizeOfLocals = func.sizeOfLocals;
+      const sizeOfReturn = instruction.functionDetails.sizeOfReturn;
+  
+      const writtenRuntime = poppedRuntime.stackFrameSetup(
+        sizeOfParams,
+        sizeOfLocals,
+        sizeOfReturn,
+        parameters
+      )
 
-    // push body statements
-    const resultRuntime = writtenRuntime.push(func.body);
+      // push body statements
+      const resultRuntime = writtenRuntime.push(func.body);
+  
+      return resultRuntime;
+    } else {
+      // Set up a new Stackframe
+      const sizeOfParams = instruction.functionDetails.sizeOfParams;
+      const sizeOfReturn = instruction.functionDetails.sizeOfReturn;
+      
+      const writtenRuntime = poppedRuntime.stackFrameSetup(
+        sizeOfParams,
+        0,
+        sizeOfReturn,
+        parameters
+      )
 
-    return resultRuntime;
+      // Copy current memory into the modules repository memory;
+      writtenRuntime.writeToModulesMemory();
+
+      let func : ModuleFunction | undefined = undefined, encapsulatingModule: Module | undefined;
+      
+      for(const moduleName of Runtime.includedModules) {
+        const module = Runtime.modules.modules[moduleName];
+        
+        if(module.moduleFunctions[calledFunction.functionName]) {
+          func = module.moduleFunctions[calledFunction.functionName];
+          encapsulatingModule = module;
+          break;
+        }
+      }
+      
+      if (!func) {
+        throw new Error(`Function ${calledFunction.functionName} not found in included modules.`);
+      }
+
+      const returnObjects = calledFunction.functionDetails.returnObjects;
+
+      if(!returnObjects) {
+        func.jsFunction.apply(encapsulatingModule, parameters.map(x => {
+          if(x.type !== "IntegerConstant" && x.type !== "FloatConstant") {
+            throw new Error("FUCK");
+          }
+          return Number(x.value)
+        }));
+
+        // Clone module repository memory after function call
+        const finalRuntime = writtenRuntime.cloneModuleMemory();
+        
+        return finalRuntime;
+      } else {
+        const res : unknown = func.jsFunction.apply(encapsulatingModule, parameters.map(x => {
+          if(x.type !== "IntegerConstant" && x.type !== "FloatConstant") {
+            throw new Error("FUCK");
+          }
+          return Number(x.value);
+        }));
+
+        // Clone module repository memory after function call
+        const finalRuntime = writtenRuntime.cloneModuleMemory();
+        
+        let results = [];
+        // check if res is an array
+        if(Array.isArray(res)) {
+          results = res;
+        } else {
+          results = [res];
+        }
+        
+        if(results.length !== returnObjects.length) {
+          throw new Error("results of external function length does not match returnObjects length");
+        }
+
+        // Prepare memory store expressions for each return object address
+        const memoryStoreExpressions : MemoryStore[] = [];
+        let currentOffSet = 0;
+        
+        for(let i = 0;i < results.length;i++) {
+          let storedValue : ConstantP;
+          if(returnObjects[i].dataType === "float" || returnObjects[i].dataType === "double") {
+            storedValue = {
+              type: "FloatConstant",
+              value: Number(results[i]),
+              dataType: returnObjects[i].dataType as FloatDataType,
+            }
+          } else {
+            storedValue = {
+              type: "IntegerConstant",
+              value: BigInt(results[i]),
+              dataType: returnObjects[i].dataType as IntegerDataType
+            }
+          }
+
+          const expression : MemoryStore = {
+            type: "MemoryStore",
+            address: {
+              type: "ReturnObjectAddress",
+              subtype: "store",
+              offset: {
+                type: "IntegerConstant",
+                value: BigInt(currentOffSet),
+                dataType: "signed int"
+              },
+              dataType: "pointer"
+            },
+            dataType: returnObjects[i].dataType,
+            value: storedValue
+          }
+
+          memoryStoreExpressions.push(expression);
+          currentOffSet += getSizeOfScalarDataType(returnObjects[i].dataType);
+        }
+        const returnStatement : ReturnStatementP = {
+          type: "ReturnStatement"
+        };
+
+        return finalRuntime.push([...memoryStoreExpressions, returnStatement]);
+      }
+    }
   },
 
   [InstructionType.POP]: (runtime: Runtime, instruction: popInstruction): Runtime => {
