@@ -15,9 +15,10 @@ import {
   stackFrameTearDownInstruction, 
   unaryOpInstruction ,
   whileLoopInstruction,
+  functionIndexWrapper,
 } from "~src/interpreter/controlItems/instructions";
 import { CNodeType } from "~src/interpreter/controlItems/types";
-import { CNodeP } from "~src/processor/c-ast/core";
+import { CNodeP, ExpressionP } from "~src/processor/c-ast/core";
 import { 
   FloatConstantP, 
   IntegerConstantP 
@@ -29,8 +30,8 @@ import {
   PostStatementExpressionP,
   ConditionalExpressionP,
 } from "~src/processor/c-ast/expression/expressions";
-import { LocalAddress, MemoryLoad, MemoryStore, ReturnObjectAddress } from "~src/processor/c-ast/memory";
-import { FunctionCallP } from "~src/processor/c-ast/function";
+import { FunctionTableIndex, LocalAddress, MemoryLoad, MemoryStore, ReturnObjectAddress } from "~src/processor/c-ast/memory";
+import { DirectlyCalledFunction, FunctionCallP, IndirectlyCalledFunction } from "~src/processor/c-ast/function";
 import { 
   BreakStatementP, 
   ContinueStatementP, 
@@ -234,6 +235,12 @@ export const NodeEvaluator: {
     return newRuntime;
   },
 
+  FunctionTableIndex: (runtime: Runtime, node: FunctionTableIndex): Runtime => {
+    const newRuntime = runtime.pushValue(node);
+
+    return newRuntime;
+  },
+
   MemoryLoad: (runtime: Runtime, node: MemoryLoad): Runtime => {
     const newRuntime = runtime.push([
       node.address,
@@ -260,8 +267,34 @@ export const NodeEvaluator: {
     // arguments
     const pointers = runtime.getPointers();
 
+    let funcIndex : ExpressionP;
+
+    if(node.calledFunction.type === "DirectlyCalledFunction") {
+      const temp = node.calledFunction;
+      temp as DirectlyCalledFunction;
+      const index = Runtime.astRootP.functionTable.findIndex(x => x.functionName === temp.functionName);
+
+      if(index === -1) {
+        throw new Error(`Function not found: ${temp.functionName}`);
+      }
+
+      funcIndex = {
+        type: "IntegerConstant",
+        value: BigInt(index),
+        dataType: "unsigned int"
+      };
+
+    } else {
+      const temp = node.calledFunction;
+      temp as IndirectlyCalledFunction;
+
+      funcIndex = temp.functionAddress;
+    }
+
     const newRuntime = runtime.push([
       ...node.args,
+      functionIndexWrapper(),
+      funcIndex,
       callInstruction(
         node.calledFunction,
         node.functionDetails
