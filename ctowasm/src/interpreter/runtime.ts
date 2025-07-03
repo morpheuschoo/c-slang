@@ -105,6 +105,10 @@ export class Runtime {
     )
   }
 
+  cloneMemory(): Memory {
+    return this.memory.clone();
+  }
+
   memoryWrite(writes: RuntimeMemoryWrite[]) : Runtime {
     const memoryWriteInterfaceArray : MemoryWriteInterface[] = writes.map(writeObject => {
       switch(writeObject.address.type) {
