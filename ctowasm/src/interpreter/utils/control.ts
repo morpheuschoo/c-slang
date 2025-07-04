@@ -1,6 +1,7 @@
 import { CNodeP } from "~src/processor/c-ast/core";
 import { Stack } from "./stack";
 import { Instruction, InstructionType, isInstruction } from "~src/interpreter/controlItems/instructions";
+import { MemoryAddress } from "./addressUtils";
 
 export type ControlItem = CNodeP | Instruction;
 
@@ -30,7 +31,6 @@ export class Control extends Stack<ControlItem, Control> {
           item.type === InstructionType.BRANCH ||
           item.type === InstructionType.POP ||
           item.type === InstructionType.WHILE ||
-          item.type === InstructionType.MEMORY_LOAD ||
           item.type === InstructionType.MEMORY_STORE ||
           item.type === InstructionType.BREAK_MARK ||
           item.type === InstructionType.CONTINUE_MARK
@@ -41,6 +41,10 @@ export class Control extends Stack<ControlItem, Control> {
           item.type === InstructionType.CASE_MARK
         ) {
           result += `  ${itemPosition}. [Instruction] ${item.type}: '${item.caseValue}'\n`;
+        } else if (
+          item.type === InstructionType.MEMORY_LOAD 
+        ) {
+          result += `  ${itemPosition}. [Instruction] ${item.type}: '${item.dataType} -> ${item.targetType}'\n`;
         } else {
           result += `  ${itemPosition}. [Instruction] ${item.type}\n`
         }
@@ -59,6 +63,9 @@ export class Control extends Stack<ControlItem, Control> {
           case 'UnaryExpression':
           case 'BinaryExpression':
             additionalInfo = nodeItem.operator ? `: '${nodeItem.operator}'` : '';
+            break;
+          case 'MemoryAddress':
+            additionalInfo = `: ${nodeItem.hexValue}`;  
             break;
         }
 

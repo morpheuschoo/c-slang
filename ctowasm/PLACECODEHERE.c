@@ -1,9 +1,9 @@
 int main() {
-  int i = 0;
-  do {
-    1;
-    continue;
-    break;
-    2;
-  } while (i < 0);
+  int i = 2;
+  int *pi = &i;
+  int **ppi = &pi;
+  **ppi;
+
+  // int i = 1;
+  // i;
 }

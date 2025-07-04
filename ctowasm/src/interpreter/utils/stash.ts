@@ -1,8 +1,9 @@
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { Stack } from "./stack";
 import { Address } from "~src/processor/c-ast/memory";
+import { MemoryAddress } from '~src/interpreter/utils/addressUtils'
 
-export type StashItem = ConstantP | Address;
+export type StashItem = ConstantP | MemoryAddress;
 
 export class Stash extends Stack<StashItem, Stash> {
   protected createNew(items: ReadonlyArray<StashItem>): Stash {
@@ -31,20 +32,8 @@ export class Stash extends Stack<StashItem, Stash> {
         case "FloatConstant":
           displayValue = `${item.value}`;
           break;
-        case "LocalAddress":
-          displayValue = `LocalAddress(offset: ${item.offset.value})`;
-          break;
-        case "DataSegmentAddress":
-          displayValue = `DataSegmentAddress(offset: ${item.offset.value})`;
-          break;
-        case "DynamicAddress":
-          displayValue = `DynamicAddress(${item.address.type})`;
-          break;
-        case "FunctionTableIndex":
-          displayValue = `FunctionTableIndex(${item.index.value})`;
-          break;
-        case "ReturnObjectAddress":
-          displayValue = `ReturnObjectAddress(${item.subtype}, offset: ${item.offset.value})`;
+        case "MemoryAddress":
+          displayValue = `MemoryAddress(address: ${item.hexValue}, type: ${item.dataType})`;
           break;
         default:
           break;
