@@ -29,7 +29,7 @@ import {
   PostStatementExpressionP,
   ConditionalExpressionP,
 } from "~src/processor/c-ast/expression/expressions";
-import { LocalAddress, MemoryLoad, MemoryStore, ReturnObjectAddress } from "~src/processor/c-ast/memory";
+import { DataSegmentAddress, DynamicAddress, LocalAddress, MemoryLoad, MemoryStore, ReturnObjectAddress } from "~src/processor/c-ast/memory";
 import { FunctionCallP } from "~src/processor/c-ast/function";
 import { 
   BreakStatementP, 
@@ -45,6 +45,7 @@ import {
 import { ExpressionStatementP } from "~src/processor/c-ast/statement/expressionStatement";
 import { containsBreakStatement, containsContinueStatement } from "~src/interpreter/utils/jumpStatementChecking";
 import { ControlItem } from "~src/interpreter/utils/control";
+import { createMemoryAddress, MemoryAddress } from "../utils/addressUtils";
 
 export const NodeEvaluator: { 
   [Type in CNodeType]?: (
@@ -221,37 +222,125 @@ export const NodeEvaluator: {
     return updatedRuntime.push(statements).push(conditions).push([node.targetExpression]);
   },
 
-  LocalAddress: (runtime: Runtime, node: LocalAddress): Runtime => {
-    return runtime.pushValue(node);
-  },
-
   // ========== MEMORY ==========
 
   // TODO
   ReturnObjectAddress: (runtime: Runtime, node: ReturnObjectAddress): Runtime => {
-    const newRuntime = runtime.pushValue(node);
+    // const newRuntime = runtime.pushValue(node);
 
-    return newRuntime;
+    // return newRuntime;
   },
 
   MemoryLoad: (runtime: Runtime, node: MemoryLoad): Runtime => {
-    const newRuntime = runtime.push([
-      node.address,
-      memoryLoadInstruction(node.dataType)
-    ])
+    let addressPush;
+    switch(node.address.type) {
+      case "LocalAddress":
+        addressPush = createMemoryAddress(
+          BigInt(runtime.getPointers().basePointer.value) + node.address.offset.value,
+          node.dataType
+        );
+        break;
 
-    return newRuntime
+      case "DataSegmentAddress":
+        addressPush = createMemoryAddress(
+          node.address.offset.value,
+          node.dataType
+        );
+        break;
+      
+      // TODO: quite bad rn lol
+      case "DynamicAddress":
+        addressPush = {
+          type: node.address.address.type,
+          address: node.address.address.address,
+          dataType: node.address.address.dataType,
+          targetType: node.dataType,
+        }
+        break;
+
+      // TODO: Other Types
+      default:
+        throw new Error(`MemoryLoad for ${node.address.type} has not been implemented`);
+    }
+    
+    if (addressPush === undefined) {
+      throw new Error('MemoryLoad for Address not implemented yet')
+    }
+    
+    if (node.targetType !== undefined) {
+      return runtime.push([
+        addressPush,
+        memoryLoadInstruction(node.dataType, node.targetType)
+      ]);
+    }
+
+    return runtime.push([
+      addressPush,
+      memoryLoadInstruction(node.dataType),
+    ])
   },
 
   MemoryStore: (runtime: Runtime, node: MemoryStore): Runtime => {
-    const newRuntime = runtime.push([
-      node.value, 
-      node.address,
+    let addressPush;
+    
+    // handle target address (where we are storing)
+    switch(node.address.type) {
+      case "LocalAddress":
+        addressPush = createMemoryAddress(
+          BigInt(runtime.getPointers().basePointer.value) + node.address.offset.value,
+          node.dataType
+        );
+        break;
+
+      case "DataSegmentAddress":
+        addressPush = createMemoryAddress(
+          node.address.offset.value,
+          node.dataType
+        );
+        break;
+      
+      case "DynamicAddress":
+        throw new Error("DynamicAddress for MemoryStore not implemented")
+        
+      // TODO: Other Types
+    }
+    
+    if (addressPush === undefined) {
+      throw new Error('MemoryStore for Address not implemented yet')
+    }
+
+    // handle value
+    // TODO: still needs fixing
+    let valueToStore: ControlItem = node.value;
+    if (node.value.type === "LocalAddress") {
+      valueToStore = createMemoryAddress(
+        BigInt(runtime.getPointers().basePointer.value) + node.value.offset.value,
+        node.value.dataType,
+      );
+    }
+
+    return runtime.push([
+      valueToStore,
+      addressPush,
       memoryStoreInstruction(node.dataType),
       popInstruction(),
-    ]);
+    ])
+  },
 
-    return newRuntime;
+  MemoryAddress: (runtime: Runtime, node: MemoryAddress): Runtime => {
+    return runtime.pushValue(node);
+  },
+
+  LocalAddress: (runtime: Runtime, node: LocalAddress): Runtime => {
+    throw new Error("LocalAddress should not be in Control")
+  },
+
+  DataSegmentAddress: (runtime: Runtime, node: DataSegmentAddress): Runtime => {
+    throw new Error("DataSegmentAddress should not be in Control")
+  },
+
+  DynamicAddress: (runtime: Runtime, node: DynamicAddress): Runtime => {
+    throw new Error("DynamicAddress should not be in Control")
   },
 
   // TODO

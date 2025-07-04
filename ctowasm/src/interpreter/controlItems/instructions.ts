@@ -85,11 +85,13 @@ export const memoryStoreInstruction = (dataType: ScalarCDataType): MemoryStoreIn
 export interface MemoryLoadInstruction extends BaseInstruction {
   type: InstructionType.MEMORY_LOAD;
   dataType: ScalarCDataType;
+  targetType?: ScalarCDataType;
 }
 
-export const memoryLoadInstruction = (dataType: ScalarCDataType): MemoryLoadInstruction => ({
+export const memoryLoadInstruction = (dataType: ScalarCDataType, targetType?: ScalarCDataType): MemoryLoadInstruction => ({
   type: InstructionType.MEMORY_LOAD,
   dataType,
+  targetType,
 })
 
 export interface WhileLoopInstruction extends BaseInstruction {

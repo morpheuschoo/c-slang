@@ -6,17 +6,12 @@ import { NodeEvaluator } from "~src/interpreter/evaluators/nodeEvaluator";
 import { InstructionEvaluator } from "~src/interpreter/evaluators/instructionEvaluator";
 import { FunctionDefinitionP } from "~src/processor/c-ast/function";
 import { Memory, MemoryWriteInterface } from "./memory";
-import { ScalarCDataType } from "~src/common/types";
-import { Address, MemoryLoad } from "~src/processor/c-ast/memory";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { SharedWasmGlobalVariables } from "~src/modules";
-
-export interface RuntimeMemoryWrite {
-  type: "RuntimeMemoryWrite";
-  address: Address | ConstantP;
-  value: ConstantP;
-  datatype: ScalarCDataType;
-}
+import { 
+  MemoryAddress,
+  RuntimeMemoryPair
+} from "~src/interpreter/utils/addressUtils";
 
 export class Runtime {
   private readonly control: Control;
@@ -88,127 +83,43 @@ export class Runtime {
   }
 
   // MEMORY
-  memoryWrite(writes: RuntimeMemoryWrite[]) : Runtime {
-    const memoryWriteInterfaceArray : MemoryWriteInterface[] = writes.map(writeObject => {
-      switch(writeObject.address.type) {
-        case "LocalAddress": {
-          const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.basePointer.value) + writeObject.address.offset.value;
-          return {
-            type: "MemoryWriteInterface",
-            address: writeAddress,
-            value: writeObject.value,
-            dataType: writeObject.datatype
-          };
-        }
-    
-        case "DataSegmentAddress": {
-          const writeAddress = writeObject.address.offset.value;
-          return {
-            type: "MemoryWriteInterface",
-            address: writeAddress,
-            value: writeObject.value,
-            dataType: writeObject.datatype
-          };
-        }
-        
-        case "IntegerConstant": {
-          const writeAddress = writeObject.address.value
-          return {
-            type: "MemoryWriteInterface",
-            address: writeAddress,
-            value: writeObject.value,
-            dataType: writeObject.datatype
-          };
-        }
-        
-        case "ReturnObjectAddress": {
-          if(writeObject.address.subtype === "load") {
-            throw new Error("Return object load instruction found in memory write")
-          }
-          const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.basePointer.value) + writeObject.address.offset.value;
-          
-          return {
-            type: "MemoryWriteInterface",
-            address: writeAddress,
-            value: writeObject.value,
-            dataType: writeObject.datatype
-          };
-        }
-    
-        case "DynamicAddress": {
-          throw new Error("Dynamic address should not be processed in memory write");
-        }
-    
-        case "FunctionTableIndex": {
-          // TODO: Figur out later
-          throw new Error("Havent implemented")
-        }
-    
-        case "FloatConstant": {
-          throw new Error("Cannot access an address whose value is a float");
-        }
-      }
-    })    
+  private resolveValueToConstantP(value: StashItem): ConstantP {
+    // if ConstantP return itself
+    if (value.type === "IntegerConstant" || value.type === "FloatConstant") {
+      return value;
+    }
+
+    // if MemoryAddress convert it to an unsigned int (equivalent)
+    return {
+      type: "IntegerConstant",
+      value: value.value,
+      dataType: "unsigned int"
+    }
+  }
+
+  memoryWrite(pairs: RuntimeMemoryPair[]): Runtime {
+    const memoryWriteInterfaceArr: MemoryWriteInterface[] = pairs.map(pair => {
+      const writeValue = this.resolveValueToConstantP(pair.value);
+
+      return {
+        type: "MemoryWriteInterface",
+        address: pair.address.value,
+        value: writeValue,
+        dataType: pair.address.dataType
+      };
+    });
 
     return new Runtime(
       this.control,
       this.stash,
-      this.memory.write(memoryWriteInterfaceArray)
-    )
+      this.memory.write(memoryWriteInterfaceArr)
+    );
   }
 
-  memoryLoad(address: Address | ConstantP, dataType: ScalarCDataType) {
-    switch(address.type) {
-      case "LocalAddress": {
-        const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.basePointer.value) + address.offset.value;
-        const value = this.memory.load(writeAddress, dataType);
-        const [ _, newRuntime ] = this.popValue();
-
-        return newRuntime.pushValue(value);
-      }
-
-      case "DataSegmentAddress": {
-        const writeAddress = address.offset.value;
-        const value = this.memory.load(writeAddress, dataType);
-        const [ _, newRuntime ] = this.popValue();
-
-        return newRuntime.pushValue(value);
-      }
-      
-      case "IntegerConstant": {
-        const writeAddress = address.value
-        const value = this.memory.load(writeAddress, dataType);
-        const [ _, newRuntime ] = this.popValue();
-
-        return newRuntime.pushValue(value);
-      }
-      
-      case "ReturnObjectAddress": {
-        if(address.subtype === "store") {
-          throw new Error("Return object store instruction found in memory load")
-        }
-        const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.stackPointer.value) + address.offset.value;
-
-        const value = this.memory.load(writeAddress, dataType);
-        const [ _, newRuntime ] = this.popValue();
-
-        return newRuntime.pushValue(value);
-      }
-
-      case "DynamicAddress": {
-        throw new Error("Dynamic address should not be processed in memory write");
-      }
-
-      case "FunctionTableIndex": {
-        // TODO: Figur out later
-        throw new Error("Havent implemented")
-      }
-
-      case "FloatConstant": {
-        throw new Error("Cannot access an address whose value is a float");
-      }
-
-    }
+  memoryLoad(address: MemoryAddress) {
+    const value = this.memory.load(address);
+    const [ _, newRuntime ] = this.popValue();
+    return newRuntime.pushValue(value);
   }
 
   stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number): Runtime {

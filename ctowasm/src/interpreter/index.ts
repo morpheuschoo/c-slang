@@ -4,12 +4,11 @@ import { toJson } from "~src/errors";
 
 export function interpret(astRootNode: CAstRootP): void {
   
-  // console.log("=== AST ===")
-  // console.log(toJson(astRootNode));
-  // console.log();
-  console.log(astRootNode);
+  console.log("=== AST ===")
+  console.log(toJson(astRootNode));
+  console.log();
 
   const interpreter = new Interpreter(astRootNode);
   interpreter.interpret();
-  console.log(interpreter.toString());
+  // console.log(interpreter.toString());
 }

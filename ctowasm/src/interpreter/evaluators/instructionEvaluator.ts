@@ -1,4 +1,4 @@
-import { Runtime, RuntimeMemoryWrite } from "~src/interpreter/runtime";
+import { Runtime } from "~src/interpreter/runtime";
 import { 
   Instruction, 
   InstructionType, 
@@ -27,7 +27,8 @@ import { performUnaryOperation } from "~src/processor/evaluateCompileTimeExpress
 import { getAdjustedIntValueAccordingToDataType } from "~src/processor/processConstant";
 import { FloatDataType, IntegerDataType, UnaryOperator } from "~src/common/types";
 import { StashItem, Stash } from "~src/interpreter/utils/stash";
-import { isConstantTrue, performConstantBinaryOperation } from "~src/interpreter/utils/operations"
+import { isConstantTrue, performConstantBinaryOperation } from "~src/interpreter/utils/constantsUtils"
+import { createMemoryAddress } from "../utils/addressUtils";
 
 export const InstructionEvaluator: {
   [InstrType in Instruction["type"]]: (
@@ -95,20 +96,70 @@ export const InstructionEvaluator: {
     const [ address, runtimeAfter ]= runtime.popValue();
     const [ value, _ ] = runtimeAfter.popValue();
 
-    if(!Stash.isConstant(value)) {
-      throw new Error("Not implemented yet");
+    /**
+     * Ensures that address is a MemoryAddress
+     * Checks for mismatches between address, value and instruction dataTypes
+     */
+    if (address.type !== "MemoryAddress") {
+      throw new Error(`Expected MemoryAddress, but got ${address.type}`)
+    }
+
+    if (address.dataType !== instruction.dataType) {
+      throw new Error(`Address dataType (${address.dataType}) doesn't match instruction dataType (${instruction.dataType})`);
+    }
+
+    // I think this needs to be fixed LOL, but it does the job kinda
+    switch(value.type) {
+      case "IntegerConstant":
+        if (!isIntegerType(instruction.dataType)) {
+          throw new Error(`Type mismatch: Cannot store integer in ${instruction.dataType} memory location`);
+        }
+        break;
+      case "FloatConstant":
+        if (isIntegerType(instruction.dataType)) {
+          throw new Error(`Type mismatch: Cannot store float in ${instruction.dataType} memory location`);
+        }
+        break;
+      case "MemoryAddress":
+        if (instruction.dataType !== "pointer") {
+          throw new Error(`Type mismatch: Cannot store memory address in non-pointer location (${instruction.dataType})`);
+        }
+        break;
     }
 
     return runtimeAfter.memoryWrite([{
-      type: "RuntimeMemoryWrite",
+      type: "RuntimeMemoryPair",
       address: address,
-      value: value, 
-      datatype: instruction.dataType}]);
+      value: value
+    }])
   },
 
   [InstructionType.MEMORY_LOAD]: (runtime: Runtime, instruction: MemoryLoadInstruction): Runtime => {
     const [ address, _ ] = runtime.popValue();
-    return runtime.memoryLoad(address, instruction.dataType);
+
+    if (address.type !== "MemoryAddress") {
+      throw new Error(`Expected MemoryAddress, but got ${address.type}`)
+    }
+
+    if (address.dataType !== instruction.dataType) {
+      throw new Error(`Address dataType (${address.dataType}) doesn't match instruction dataType (${instruction.dataType})`);
+    }
+    
+    if (address.dataType === "pointer" && !instruction.targetType) {
+      throw new Error("pointer does not point to any type in memory load instruction")
+    }
+
+    if (instruction.targetType) {
+      return runtime.memoryLoad(
+        createMemoryAddress(
+          address.value,
+          instruction.dataType,
+          instruction.targetType
+        )
+      )
+    }
+
+    return runtime.memoryLoad(address);
   },
 
   [InstructionType.STACKFRAMETEARDOWNINSTRUCTION]: (runtime: Runtime, instruction: StackFrameTearDownInstruction): Runtime => {

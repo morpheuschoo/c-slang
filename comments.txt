@@ -1,0 +1,14 @@
+TODO:
+
+- Expression vs Statement (Value producing vs non-value producing)
+- = should return the value of the right hand subexpression and assign
+  - so something like f1(x = 2) should work
+  - https://www.lysator.liu.se/c/ANSI-C-grammar-y.html
+  - x = 2; should be an expressionStatement not a MemoryStore
+  - so it should start from an expressionStatement and then x = 2 and a POP
+- Compound statements?
+- no difference between int x = 1 and x = 1 (need to make a distinction)
+- declarations need to be added in
+
+NOTE:
+- Pointer 4 bytes
