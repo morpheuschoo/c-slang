@@ -20,7 +20,8 @@ export class Interpreter {
   async interpret(): Promise<void> {
     Runtime.astRootP = this.astRootNode;
     Runtime.includedModules = this.includedModules;
-    
+    console.log(this.astRootNode);
+
     const mainFunction = Runtime.astRootP.functions.find(x => x.name === "main");
     
     if(!mainFunction) {

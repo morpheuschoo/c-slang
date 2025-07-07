@@ -1,12 +1,12 @@
 import { KB, WASM_PAGE_IN_HEX } from "~src/common/constants";
-import { calculateNumberOfPagesNeededForBytes, isFloatType, isIntegerType, primaryDataTypeSizes } from "~src/common/utils";
+import { calculateNumberOfPagesNeededForBytes, getSizeOfScalarDataType, isFloatType, isIntegerType, primaryDataTypeSizes } from "~src/common/utils";
 import { WASM_ADDR_TYPE } from "~src/translator/memoryUtil";
 import { SharedWasmGlobalVariables } from "~src/modules";
 import { FloatDataType, IntegerDataType, ScalarCDataType } from "~src/common/types";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { convertConstantToByteStr } from "~src/processor/byteStrUtil";
 import { Runtime } from "./runtime";
-import { createMemoryAddress, MemoryAddress } from "~src/interpreter/utils/addressUtils";
+import { createMemoryAddress, MemoryAddress, RuntimeMemoryPair } from "~src/interpreter/utils/addressUtils";
 import { StashItem } from "~src/interpreter/utils/stash";
 
 export interface MemoryWriteInterface {
@@ -150,7 +150,7 @@ export class Memory {
     };
   }
 
-  stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number): Memory {
+  stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number, parameters: StashItem[]): Memory {
     const newMemory = this.clone();
     const totalSize = sizeOfParams + sizeOfLocals + sizeOfReturn;
     
@@ -163,7 +163,28 @@ export class Memory {
       this.sharedWasmGlobalVariables.heapPointer.value
     )
 
-    return newMemory;
+    let offset = 0;
+    const writeParameters : MemoryWriteInterface[] = parameters.map(writeObject => {
+      if(writeObject.type === "IntegerConstant" || writeObject.type === "FloatConstant") {
+        const size = getSizeOfScalarDataType(writeObject.dataType)
+        offset -= size;
+
+        const writeAddress : bigint = BigInt(offset) + BigInt(newMemory.sharedWasmGlobalVariables.basePointer.value)
+
+        const res : MemoryWriteInterface = {
+          type: "MemoryWriteInterface",
+          address: writeAddress,
+          dataType: writeObject.dataType,
+          value: writeObject
+        }
+
+        return res;
+      } else {
+        throw new Error("Not implemented yet: pointers as function arguments");
+      }
+    })
+
+    return newMemory.write(writeParameters);
   }
 
   stackFrameTearDown(stackPointer: number, basePointer: number): Memory {

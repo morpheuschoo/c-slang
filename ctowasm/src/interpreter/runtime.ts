@@ -143,52 +143,13 @@ export class Runtime {
   }
 
   stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number, parameters: StashItem[]): Runtime {
-    const newMemory = this.memory.stackFrameSetup(sizeOfParams, sizeOfLocals, sizeOfReturn);
+    const newMemory = this.memory.stackFrameSetup(sizeOfParams, sizeOfLocals, sizeOfReturn, parameters);
 
     return new Runtime(
       this.control,
       this.stash,
       newMemory
     )
-    
-    // const newMemory = this.memory.stackFrameSetup(sizeOfParams, sizeOfLocals, sizeOfReturn);
-    // const newRuntime = new Runtime(
-    //   this.control,
-    //   this.stash,
-    //   newMemory
-    // )
-
-    // let offset = 0;
-    // const writeParameters : RuntimeMemoryWrite[] = parameters.map(writeObject => {
-    //   if(writeObject.type === "IntegerConstant" || writeObject.type === "FloatConstant") {
-    //     const size = getSizeOfScalarDataType(writeObject.dataType)
-    //     offset -= size;
-
-    //     const writeAddress : LocalAddress = {
-    //       type: "LocalAddress",
-    //       offset: {
-    //         type: "IntegerConstant",
-    //         value: BigInt(offset),
-    //         dataType: "unsigned int"
-    //       },
-    //       dataType: "pointer"
-    //     }
-
-    //     const res : RuntimeMemoryWrite = {
-    //       type: "RuntimeMemoryWrite",
-    //       address: writeAddress,
-    //       value: writeObject,
-    //       datatype: writeObject.dataType
-    //     }
-
-    //     return res;
-    //   } else {
-    //     throw new Error("Not implemented yet: pointers as function arguments");
-    //   }
-    // })
-    // const writtenRuntime = newRuntime.memoryWrite(writeParameters);
-
-    // return writtenRuntime;
   }
 
   stackFrameTearDown(stackPointer: number, basePointer: number) {
