@@ -76,7 +76,6 @@ interface ReturnObjectAddressLoad extends ReturnObjectAddressBase {
 export interface MemoryLoad extends ExpressionPBase {
   type: "MemoryLoad";
   address: Address;
-  targetType?: ScalarCDataType; // this is for pointer dereferencing for when dataType is pointer, added at runtime
 }
 
 // Represents the storing of a primary data type object in an address in memory

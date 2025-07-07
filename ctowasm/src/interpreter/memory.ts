@@ -163,19 +163,9 @@ export class Memory {
     return newMemory;
   }
 
-  /**
-   * when dataType is "pointer", targetType is required.
-   * targetType refers to the type that the pointer is pointing to.
-   */
   load(address: MemoryAddress): StashItem {
     // handles pointers
     if(address.dataType === "pointer") {
-
-      // ensures that the pointer has a targetType
-      if (address.targetType === undefined) {
-        throw new Error("Stack pointer has no target type");
-      }
-
       // Load pointer value as "unsigned int" as they occupy the same amount of space
       const size = primaryDataTypeSizes["unsigned int"];
       this.checkOutOfBounds(address.value);
@@ -187,7 +177,8 @@ export class Memory {
         value |= BigInt(view[Number(address.value) + i]) << BigInt(8 * i);
       }
       
-      return createMemoryAddress(value, address.targetType);
+      // returns a MemoryAddress instead of a ConstantP
+      return createMemoryAddress(value, address.dataType);
     }
     
     // handles the rest of the ScalarCDataTypes

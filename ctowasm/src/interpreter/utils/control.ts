@@ -1,7 +1,6 @@
 import { CNodeP } from "~src/processor/c-ast/core";
 import { Stack } from "./stack";
 import { Instruction, InstructionType, isInstruction } from "~src/interpreter/controlItems/instructions";
-import { MemoryAddress } from "./addressUtils";
 
 export type ControlItem = CNodeP | Instruction;
 
@@ -44,7 +43,11 @@ export class Control extends Stack<ControlItem, Control> {
         } else if (
           item.type === InstructionType.MEMORY_LOAD 
         ) {
-          result += `  ${itemPosition}. [Instruction] ${item.type}: '${item.dataType} -> ${item.targetType}'\n`;
+          result += `  ${itemPosition}. [Instruction] ${item.type}: '${item.dataType}'\n`;
+        } else if (
+          item.type === InstructionType.TYPE_CONVERSION
+        ) {
+          result += `  ${itemPosition}. [Instruction] ${item.type}: '${item.targetType}'\n`
         } else {
           result += `  ${itemPosition}. [Instruction] ${item.type}\n`
         }
