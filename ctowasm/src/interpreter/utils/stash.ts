@@ -1,6 +1,5 @@
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { Stack } from "./stack";
-import { Address } from "~src/processor/c-ast/memory";
 import { MemoryAddress } from '~src/interpreter/utils/addressUtils'
 
 export type StashItem = ConstantP | MemoryAddress;

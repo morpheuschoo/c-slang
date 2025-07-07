@@ -15,6 +15,7 @@ import {
   stackFrameTearDownInstruction, 
   unaryOpInstruction ,
   whileLoopInstruction,
+  typeConversionInstruction,
 } from "~src/interpreter/controlItems/instructions";
 import { CNodeType } from "~src/interpreter/controlItems/types";
 import { CNodeP } from "~src/processor/c-ast/core";
@@ -29,7 +30,13 @@ import {
   PostStatementExpressionP,
   ConditionalExpressionP,
 } from "~src/processor/c-ast/expression/expressions";
-import { DataSegmentAddress, DynamicAddress, LocalAddress, MemoryLoad, MemoryStore, ReturnObjectAddress } from "~src/processor/c-ast/memory";
+import { 
+  DataSegmentAddress, 
+  DynamicAddress, 
+  LocalAddress, MemoryLoad, 
+  MemoryStore, 
+  ReturnObjectAddress
+} from "~src/processor/c-ast/memory";
 import { FunctionCallP } from "~src/processor/c-ast/function";
 import { 
   BreakStatementP, 
@@ -118,7 +125,6 @@ export const NodeEvaluator: {
 
   // === JUMP STATEMENTS ===
 
-  // TODO
   ReturnStatement: (runtime: Runtime, node: ReturnStatementP): Runtime => {
     const topControlItem = runtime.peekControl();
 
@@ -178,12 +184,7 @@ export const NodeEvaluator: {
   },
 
   /**
-   * https://stackoverflow.com/questions/68406541/how-cases-get-evaluated-in-switch-statements-c
-   * No default statement body not tested yet
-   * 
-   * TODO: 
-   * 2. redundant case marks need to be skipped
-   * 3. redundant break marks need to be skipped
+   * Followed from: https://stackoverflow.com/questions/68406541/how-cases-get-evaluated-in-switch-statements-c
    */
   SwitchStatement: (runtime: Runtime, node: SwitchStatementP): Runtime => {
     const hasBreak = containsBreakStatement(
@@ -222,14 +223,7 @@ export const NodeEvaluator: {
     return updatedRuntime.push(statements).push(conditions).push([node.targetExpression]);
   },
 
-  // ========== MEMORY ==========
-
-  // TODO
-  ReturnObjectAddress: (runtime: Runtime, node: ReturnObjectAddress): Runtime => {
-    // const newRuntime = runtime.pushValue(node);
-
-    // return newRuntime;
-  },
+  // ========== MEMORY ==========  
 
   MemoryLoad: (runtime: Runtime, node: MemoryLoad): Runtime => {
     let addressPush;
@@ -248,15 +242,24 @@ export const NodeEvaluator: {
         );
         break;
       
-      // TODO: quite bad rn lol
-      case "DynamicAddress":
-        addressPush = {
-          type: node.address.address.type,
-          address: node.address.address.address,
-          dataType: node.address.address.dataType,
-          targetType: node.dataType,
+      case "ReturnObjectAddress":
+        if (node.address.subtype !== "load") {
+          throw new Error("Expected 'load' in ReturnObjectAddress")
         }
+
+        addressPush = createMemoryAddress(
+          BigInt(runtime.getPointers().stackPointer.value) + node.address.offset.value,
+          node.dataType,
+        )
         break;
+      
+      // TODO: need to check if it will ever push an Address onto the Control, if so we need to handle that
+      case "DynamicAddress":
+        return runtime.push([
+          node.address.address,
+          typeConversionInstruction(node.dataType),
+          memoryLoadInstruction(node.dataType),
+        ]);
 
       // TODO: Other Types
       default:
@@ -265,13 +268,6 @@ export const NodeEvaluator: {
     
     if (addressPush === undefined) {
       throw new Error('MemoryLoad for Address not implemented yet')
-    }
-    
-    if (node.targetType !== undefined) {
-      return runtime.push([
-        addressPush,
-        memoryLoadInstruction(node.dataType, node.targetType)
-      ]);
     }
 
     return runtime.push([
@@ -299,10 +295,20 @@ export const NodeEvaluator: {
         );
         break;
       
-      case "DynamicAddress":
-        throw new Error("DynamicAddress for MemoryStore not implemented")
-        
+      case "ReturnObjectAddress":
+        if (node.address.subtype !== "store") {
+          throw new Error("Expected 'store' in ReturnObjectAddress")
+        }
+
+        addressPush = createMemoryAddress(
+          BigInt(runtime.getPointers().basePointer.value) + node.address.offset.value,
+          node.dataType,
+        )
+        break;
+      
       // TODO: Other Types
+      default:
+        throw new Error(`MemoryLoad for ${node.address.type} has not been implemented`);
     }
     
     if (addressPush === undefined) {
@@ -310,7 +316,7 @@ export const NodeEvaluator: {
     }
 
     // handle value
-    // TODO: still needs fixing
+    // TODO: still needs fixing, needs to handle all expressions
     let valueToStore: ControlItem = node.value;
     if (node.value.type === "LocalAddress") {
       valueToStore = createMemoryAddress(
@@ -339,11 +345,14 @@ export const NodeEvaluator: {
     throw new Error("DataSegmentAddress should not be in Control")
   },
 
+  ReturnObjectAddress: (runtime: Runtime, node: ReturnObjectAddress): Runtime => {
+    throw new Error("ReturnObjectAddress should not be in Control");
+  },
+
   DynamicAddress: (runtime: Runtime, node: DynamicAddress): Runtime => {
     throw new Error("DynamicAddress should not be in Control")
   },
 
-  // TODO
   FunctionCall: (runtime: Runtime, node: FunctionCallP): Runtime => {
     // push order: stack frame tear down instruction, call instruction (contains function details information, and function call information),
     // arguments
@@ -388,7 +397,6 @@ export const NodeEvaluator: {
     return runtimeWithInstruction.pushNode([node.expr]);
   },
 
-  // TODO
   PreStatementExpression: (runtime: Runtime, node: PreStatementExpressionP): Runtime => {
     const newRuntime = runtime.push([
       ...node.statements,
@@ -398,7 +406,6 @@ export const NodeEvaluator: {
     return newRuntime;
   },
 
-  // TODO
   PostStatementExpression: (runtime: Runtime, node: PostStatementExpressionP): Runtime => {
     const newRuntime = runtime.push([
       node.expr,

@@ -13,29 +13,13 @@ export interface MemoryAddress extends CNodePBase{
   value: bigint;
   hexValue: string;
   dataType: ScalarCDataType;
-  targetType?: ScalarCDataType; // if dataType is "pointer", this field refers to the type that it is pointing to
 }
 
-export function createMemoryAddress(
-  value: bigint,
-  dataType: ScalarCDataType,
-  targetType?: ScalarCDataType
-): MemoryAddress {
-  const hexValue = `0x${value.toString(16).padStart(8, '0')}`;
-  if (targetType !== undefined) {
-    return {
-      type: "MemoryAddress",
-      value,
-      hexValue,
-      dataType,
-      targetType
-    }
-  }
-
+export function createMemoryAddress(value: bigint, dataType: ScalarCDataType): MemoryAddress {
   return {
     type: "MemoryAddress",
     value,
-    hexValue,
+    hexValue: `0x${value.toString(16).padStart(8, '0')}`,
     dataType,
   };
 }
