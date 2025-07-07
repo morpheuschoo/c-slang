@@ -22,15 +22,12 @@ import {
   FunctionIndexWrapper,
   TypeConversionInstruction,
  } from "~src/interpreter/controlItems/instructions";
+import { FunctionTableIndex, MemoryStore } from "~src/processor/c-ast/memory";
 import { getSizeOfScalarDataType, isIntegerType } from "~src/common/utils";
-import { FunctionTableIndex, LocalAddress, MemoryStore } from "~src/processor/c-ast/memory";
-import { getSizeOfScalarDataType, isIntegerType } from "~src/common/utils";
-import { DirectlyCalledFunction } from "~src/processor/c-ast/function";
 import { performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
 import { getAdjustedIntValueAccordingToDataType } from "~src/processor/processConstant";
 import { FloatDataType, IntegerDataType, UnaryOperator } from "~src/common/types";
 import { StashItem, Stash } from "~src/interpreter/utils/stash";
-import { isConstantTrue, performConstantBinaryOperation } from "~src/interpreter/utils/operations"
 import { Module, ModuleFunction } from "~src/modules/types";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { ReturnStatementP } from "~src/processor/c-ast/statement/jumpStatement";
@@ -38,7 +35,6 @@ import { isConstantTrue, performConstantBinaryOperation } from "~src/interpreter
 import { 
   createMemoryAddress, 
   isMemoryAddress, 
-  RuntimeMemoryPair 
 } from "~src/interpreter/utils/addressUtils";
 
 export const InstructionEvaluator: {
@@ -115,6 +111,10 @@ export const InstructionEvaluator: {
       throw new Error(`Expected MemoryAddress, but got ${address.type}`)
     }
 
+    if (value.type === "FunctionTableIndex") {
+      throw new Error(`Did not expect FunctionTableIndex`);
+    }
+
     if (address.dataType !== instruction.dataType) {
       throw new Error(`Address dataType (${address.dataType}) doesn't match instruction dataType (${instruction.dataType})`);
     }
@@ -172,7 +172,7 @@ export const InstructionEvaluator: {
       throw new Error("Wrong type for function index value in Function index wrapper, expected: IntegerConstant");
     }
 
-    const wrappedFunctionIndex : FunctionTableIndex = {
+    const wrappedFunctionIndex: FunctionTableIndex = {
       type: "FunctionTableIndex",
       index: index,
       dataType: "pointer"
@@ -190,9 +190,6 @@ export const InstructionEvaluator: {
     let parameters: StashItem[] = [];
     for(let i = 0;i < numOfParameters; i++) {
       const [parameter, newRuntime] = poppedRuntime.popValue();
-    let parameters: StashItem[] = [], popedRuntime = runtime;
-    for(let i = 0; i < numOfParameters; i++) {
-      const [parameter, newRuntime] = popedRuntime.popValue();
 
       parameters.push(parameter);
       poppedRuntime = newRuntime;
@@ -282,40 +279,6 @@ export const InstructionEvaluator: {
         const finalRuntime = writtenRuntime.cloneModuleMemory();
         
         return finalRuntime;
-    const func = Runtime.astRootP.functions.find(x => x.name === calledFunction.functionName);
-    if(!func) {
-      throw new Error("No function called: " + calledFunction.functionName);
-    }
-    
-    // internal functions (defined by user)
-    const sizeOfParams = instruction.functionDetails.sizeOfParams;
-    const sizeOfLocals = func.sizeOfLocals;
-    const sizeOfReturn = instruction.functionDetails.sizeOfReturn;
-
-    // Set up a new Stackframe
-    const newRuntime = popedRuntime.stackFrameSetup(
-      sizeOfParams,
-      sizeOfLocals,
-      sizeOfReturn
-    )
-    
-    let offset = 0;
-    // Write parameters into memory
-    const writeParameters : RuntimeMemoryPair[] = parameters.map(writeObject => {
-      if(writeObject.type === "IntegerConstant" || writeObject.type === "FloatConstant") {
-        const size = getSizeOfScalarDataType(writeObject.dataType)
-        offset -= size;
-
-        const writeAddress = createMemoryAddress(
-          BigInt(runtime.getPointers().basePointer.value) + BigInt(offset),
-          "pointer",
-        )
-
-        return {
-          type: "RuntimeMemoryPair",
-          address: writeAddress,
-          value: writeObject
-        };
       } else {
         const res : unknown = func.jsFunction.apply(encapsulatingModule, parameters.map(x => {
           if(x.type !== "IntegerConstant" && x.type !== "FloatConstant") {

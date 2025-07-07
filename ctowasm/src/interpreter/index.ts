@@ -10,6 +10,7 @@ export function interpret(astRootNode: CAstRootP, includedModules: ModuleName[])
   console.log();
 
   const interpreter = new Interpreter(astRootNode, includedModules);
+  // const interpreter = new Interpreter(astRootNode);
   interpreter.interpret();
   // console.log(interpreter.toString());
 }

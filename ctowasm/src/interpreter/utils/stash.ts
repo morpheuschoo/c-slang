@@ -1,8 +1,9 @@
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { Stack } from "./stack";
 import { MemoryAddress } from '~src/interpreter/utils/addressUtils'
+import { FunctionTableIndex } from "~src/processor/c-ast/memory";
 
-export type StashItem = ConstantP | MemoryAddress;
+export type StashItem = ConstantP | MemoryAddress | FunctionTableIndex;
 
 export class Stash extends Stack<StashItem, Stash> {
   protected createNew(items: ReadonlyArray<StashItem>): Stash {
@@ -34,6 +35,8 @@ export class Stash extends Stack<StashItem, Stash> {
         case "MemoryAddress":
           displayValue = `MemoryAddress(address: ${item.hexValue}, type: ${item.dataType})`;
           break;
+        case "FunctionTableIndex":
+          displayValue = `FunctionTableIndex(${item.index.value})`;
         default:
           break;
       }

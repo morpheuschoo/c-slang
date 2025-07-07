@@ -1,11 +1,11 @@
 import { ScalarCDataType } from "~src/common/types";
 import { CNodePBase } from "~src/processor/c-ast/core";
-import { StashItem } from "~src/interpreter/utils/stash";
+import { ConstantP } from "~src/processor/c-ast/expression/constants";
 
 export interface RuntimeMemoryPair {
   type: "RuntimeMemoryPair";
   address: MemoryAddress;
-  value: StashItem;
+  value: MemoryAddress | ConstantP;
 }
 
 export interface MemoryAddress extends CNodePBase{

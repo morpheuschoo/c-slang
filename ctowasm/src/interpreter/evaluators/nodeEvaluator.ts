@@ -31,16 +31,20 @@ import {
   PostStatementExpressionP,
   ConditionalExpressionP,
 } from "~src/processor/c-ast/expression/expressions";
-import { FunctionTableIndex, LocalAddress, MemoryLoad, MemoryStore, ReturnObjectAddress } from "~src/processor/c-ast/memory";
-import { DirectlyCalledFunction, FunctionCallP, IndirectlyCalledFunction } from "~src/processor/c-ast/function";
 import { 
+  DirectlyCalledFunction, 
+  FunctionCallP, 
+  IndirectlyCalledFunction 
+} from "~src/processor/c-ast/function";
+import { 
+  MemoryStore, 
+  MemoryLoad, 
+  LocalAddress, 
   DataSegmentAddress, 
   DynamicAddress, 
-  LocalAddress, MemoryLoad, 
-  MemoryStore, 
-  ReturnObjectAddress
+  ReturnObjectAddress,
+  FunctionTableIndex
 } from "~src/processor/c-ast/memory";
-import { FunctionCallP } from "~src/processor/c-ast/function";
 import { 
   BreakStatementP, 
   ContinueStatementP, 
@@ -273,23 +277,16 @@ export const NodeEvaluator: {
       throw new Error('MemoryLoad for Address not implemented yet')
     }
 
-
-  FunctionTableIndex: (runtime: Runtime, node: FunctionTableIndex): Runtime => {
-    const newRuntime = runtime.pushValue(node);
-
-    return newRuntime;
-  },
-
-  MemoryLoad: (runtime: Runtime, node: MemoryLoad): Runtime => {
-    const newRuntime = runtime.push([
-      node.address,
-      memoryLoadInstruction(node.dataType)
-
     return runtime.push([
       addressPush,
       memoryLoadInstruction(node.dataType),
-
     ])
+  },
+
+  FunctionTableIndex: (runtime: Runtime, node: FunctionTableIndex): Runtime => {
+    const newRuntime = runtime.pushValue(node);
+    return newRuntime;
+    // throw new Error("FunctionTableIndex");
   },
 
   MemoryStore: (runtime: Runtime, node: MemoryStore): Runtime => {
@@ -393,8 +390,6 @@ export const NodeEvaluator: {
 
     } else {
       const temp = node.calledFunction;
-      temp as IndirectlyCalledFunction;
-
       funcIndex = temp.functionAddress;
     }
 
