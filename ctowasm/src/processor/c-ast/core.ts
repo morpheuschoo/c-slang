@@ -29,8 +29,13 @@ import { PrimaryDataTypeMemoryObjectDetails } from "~src/processor/dataTypeUtil"
 import { ModuleName } from "~src/modules";
 import { FunctionTable } from "~src/processor/symbolTable";
 import { ExpressionStatementP } from "./statement/expressionStatement";
+import { MemoryAddress } from "~src/interpreter/utils/addressUtils";
 
-export type CNodeP = FunctionDefinitionP | StatementP | ExpressionP;
+export type CNodeP = 
+  | FunctionDefinitionP 
+  | StatementP
+  | ExpressionP 
+  | MemoryAddress;
 
 /**
  * Every processed C AST node should extend this interface.
@@ -45,7 +50,6 @@ export type StatementP =
   | IterationStatementP
   | FunctionCallP
   | JumpStatementP
-  | MemoryStore
   | SwitchStatementP
   | ExpressionStatementP;
 

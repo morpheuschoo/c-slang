@@ -2,7 +2,7 @@ import { BinaryOperator, ScalarCDataType } from "~src/common/types";
 import { CNodeP, ExpressionP } from "~src/processor/c-ast/core";
 import { BinaryExpressionP } from "~src/processor/c-ast/expression/expressions";
 import { CalledFunction, FunctionDetails } from "~src/processor/c-ast/function";
-import { Address } from "~src/processor/c-ast/memory";
+import { Address, DynamicAddress } from "~src/processor/c-ast/memory";
 import { Control, ControlItem } from "~src/interpreter/utils/control";
 
 /**
@@ -23,6 +23,7 @@ export enum InstructionType {
   CASE_JUMP = "CASE_JUMP",
   CASE_MARK = "CASE_MARK",
   CONTINUE_MARK = "CONTINUE_MARK",
+  TYPE_CONVERSION = "TYPE_CONVERSION",
 }
 
 export interface BaseInstruction {
@@ -236,6 +237,16 @@ export function doCaseInstructionsMatch(
   return jumpInstruction.caseValue === markInstruction.caseValue;
 }
 
+export interface TypeConversionInstruction extends BaseInstruction {
+  type: InstructionType.TYPE_CONVERSION;
+  targetType: ScalarCDataType;
+}
+
+export const typeConversionInstruction = (targetType: ScalarCDataType): TypeConversionInstruction => ({
+  type: InstructionType.TYPE_CONVERSION,
+  targetType,
+})
+
 export type Instruction = 
   | BinaryOpInstruction
   | UnaryOpInstruction
@@ -251,7 +262,8 @@ export type Instruction =
   | BreakMarkInstruction
   | CaseJumpInstruction
   | CaseMarkInstruction
-  | ContinueMarkInstruction;
+  | ContinueMarkInstruction
+  | TypeConversionInstruction;
 
 export const isInstruction = (item: any): item is Instruction => {
   return item && typeof item === 'object' && 'type' in item && 

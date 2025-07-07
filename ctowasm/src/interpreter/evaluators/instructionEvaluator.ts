@@ -1,4 +1,4 @@
-import { Runtime, RuntimeMemoryWrite } from "~src/interpreter/runtime";
+import { Runtime } from "~src/interpreter/runtime";
 import { 
   Instruction, 
   InstructionType, 
@@ -20,9 +20,12 @@ import {
   CallInstruction,
   StackFrameTearDownInstruction,
   FunctionIndexWrapper,
+  TypeConversionInstruction,
  } from "~src/interpreter/controlItems/instructions";
 import { getSizeOfScalarDataType, isIntegerType } from "~src/common/utils";
 import { FunctionTableIndex, LocalAddress, MemoryStore } from "~src/processor/c-ast/memory";
+import { getSizeOfScalarDataType, isIntegerType } from "~src/common/utils";
+import { DirectlyCalledFunction } from "~src/processor/c-ast/function";
 import { performUnaryOperation } from "~src/processor/evaluateCompileTimeExpression";
 import { getAdjustedIntValueAccordingToDataType } from "~src/processor/processConstant";
 import { FloatDataType, IntegerDataType, UnaryOperator } from "~src/common/types";
@@ -31,6 +34,12 @@ import { isConstantTrue, performConstantBinaryOperation } from "~src/interpreter
 import { Module, ModuleFunction } from "~src/modules/types";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { ReturnStatementP } from "~src/processor/c-ast/statement/jumpStatement";
+import { isConstantTrue, performConstantBinaryOperation } from "~src/interpreter/utils/constantsUtils"
+import { 
+  createMemoryAddress, 
+  isMemoryAddress, 
+  RuntimeMemoryPair 
+} from "~src/interpreter/utils/addressUtils";
 
 export const InstructionEvaluator: {
   [InstrType in Instruction["type"]]: (
@@ -98,20 +107,56 @@ export const InstructionEvaluator: {
     const [ address, runtimeAfter ]= runtime.popValue();
     const [ value, _ ] = runtimeAfter.popValue();
 
-    if(!Stash.isConstant(value)) {
-      throw new Error("Not implemented yet");
+    /**
+     * Ensures that address is a MemoryAddress
+     * Checks for mismatches between address, value and instruction dataTypes
+     */
+    if (address.type !== "MemoryAddress") {
+      throw new Error(`Expected MemoryAddress, but got ${address.type}`)
+    }
+
+    if (address.dataType !== instruction.dataType) {
+      throw new Error(`Address dataType (${address.dataType}) doesn't match instruction dataType (${instruction.dataType})`);
+    }
+
+    // TODO: This type checking needs to be checked if it works / fixed
+    switch(value.type) {
+      case "IntegerConstant":
+        if (!isIntegerType(instruction.dataType)) {
+          throw new Error(`Type mismatch: Cannot store integer in ${instruction.dataType} memory location`);
+        }
+        break;
+      case "FloatConstant":
+        if (isIntegerType(instruction.dataType)) {
+          throw new Error(`Type mismatch: Cannot store float in ${instruction.dataType} memory location`);
+        }
+        break;
+      case "MemoryAddress":
+        if (instruction.dataType !== "pointer") {
+          throw new Error(`Type mismatch: Cannot store memory address in non-pointer location (${instruction.dataType})`);
+        }
+        break;
     }
 
     return runtimeAfter.memoryWrite([{
-      type: "RuntimeMemoryWrite",
+      type: "RuntimeMemoryPair",
       address: address,
-      value: value, 
-      datatype: instruction.dataType}]);
+      value: value
+    }])
   },
 
   [InstructionType.MEMORY_LOAD]: (runtime: Runtime, instruction: MemoryLoadInstruction): Runtime => {
     const [ address, _ ] = runtime.popValue();
-    return runtime.memoryLoad(address, instruction.dataType);
+
+    if (address.type !== "MemoryAddress") {
+      throw new Error(`Expected MemoryAddress, but got ${address.type}`)
+    }
+
+    if (address.dataType !== instruction.dataType) {
+      throw new Error(`Address dataType (${address.dataType}) doesn't match instruction dataType (${instruction.dataType})`);
+    }
+
+    return runtime.memoryLoad(address);
   },
 
   [InstructionType.STACKFRAMETEARDOWNINSTRUCTION]: (runtime: Runtime, instruction: StackFrameTearDownInstruction): Runtime => {
@@ -145,6 +190,9 @@ export const InstructionEvaluator: {
     let parameters: StashItem[] = [];
     for(let i = 0;i < numOfParameters; i++) {
       const [parameter, newRuntime] = poppedRuntime.popValue();
+    let parameters: StashItem[] = [], popedRuntime = runtime;
+    for(let i = 0; i < numOfParameters; i++) {
+      const [parameter, newRuntime] = popedRuntime.popValue();
 
       parameters.push(parameter);
       poppedRuntime = newRuntime;
@@ -234,6 +282,40 @@ export const InstructionEvaluator: {
         const finalRuntime = writtenRuntime.cloneModuleMemory();
         
         return finalRuntime;
+    const func = Runtime.astRootP.functions.find(x => x.name === calledFunction.functionName);
+    if(!func) {
+      throw new Error("No function called: " + calledFunction.functionName);
+    }
+    
+    // internal functions (defined by user)
+    const sizeOfParams = instruction.functionDetails.sizeOfParams;
+    const sizeOfLocals = func.sizeOfLocals;
+    const sizeOfReturn = instruction.functionDetails.sizeOfReturn;
+
+    // Set up a new Stackframe
+    const newRuntime = popedRuntime.stackFrameSetup(
+      sizeOfParams,
+      sizeOfLocals,
+      sizeOfReturn
+    )
+    
+    let offset = 0;
+    // Write parameters into memory
+    const writeParameters : RuntimeMemoryPair[] = parameters.map(writeObject => {
+      if(writeObject.type === "IntegerConstant" || writeObject.type === "FloatConstant") {
+        const size = getSizeOfScalarDataType(writeObject.dataType)
+        offset -= size;
+
+        const writeAddress = createMemoryAddress(
+          BigInt(runtime.getPointers().basePointer.value) + BigInt(offset),
+          "pointer",
+        )
+
+        return {
+          type: "RuntimeMemoryPair",
+          address: writeAddress,
+          value: writeObject
+        };
       } else {
         const res : unknown = func.jsFunction.apply(encapsulatingModule, parameters.map(x => {
           if(x.type !== "IntegerConstant" && x.type !== "FloatConstant") {
@@ -377,6 +459,16 @@ export const InstructionEvaluator: {
     }
 
     return currRuntime;
+  },
+
+  [InstructionType.TYPE_CONVERSION]: (runtime: Runtime, instruction: TypeConversionInstruction): Runtime => {
+    const [address, newRuntime] = runtime.popValue();
+    
+    if (!isMemoryAddress(address)) {
+      throw new Error(`Expected MemoryAddress in Stash but got ${address.type}`);
+    }
+
+    return newRuntime.pushValue(createMemoryAddress(address.value, instruction.targetType));
   },
 
   [InstructionType.CASE_MARK]: (runtime: Runtime, instruction: CaseMarkInstruction): Runtime => {
