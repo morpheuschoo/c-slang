@@ -6,6 +6,11 @@ import { NodeEvaluator } from "~src/interpreter/evaluators/nodeEvaluator";
 import { InstructionEvaluator } from "~src/interpreter/evaluators/instructionEvaluator";
 import { FunctionDefinitionP } from "~src/processor/c-ast/function";
 import { Memory, MemoryWriteInterface } from "./memory";
+import { ScalarCDataType } from "~src/common/types";
+import { Address, LocalAddress, MemoryLoad } from "~src/processor/c-ast/memory";
+import { ConstantP } from "~src/processor/c-ast/expression/constants";
+import ModuleRepository, { ModuleName, SharedWasmGlobalVariables } from "~src/modules";
+import { getSizeOfScalarDataType } from "~src/common/utils";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { SharedWasmGlobalVariables } from "~src/modules";
 import { 
@@ -19,6 +24,8 @@ export class Runtime {
   private readonly memory: Memory;
   
   public static astRootP: CAstRootP;
+  public static includedModules: ModuleName[];
+  public static modules: ModuleRepository;
 
   constructor(
     control?: Control,
@@ -83,6 +90,85 @@ export class Runtime {
   }
 
   // MEMORY
+  writeToModulesMemory(): void {
+    this.memory.writeToModuleMemory();
+  }
+
+  cloneModuleMemory(): Runtime {
+    const newMemory = this.memory.cloneModuleMemory();
+
+    return new Runtime(
+      this.control,
+      this.stash,
+      newMemory,
+    )
+  }
+
+  cloneMemory(): Memory {
+    return this.memory.clone();
+  }
+
+  memoryWrite(writes: RuntimeMemoryWrite[]) : Runtime {
+    const memoryWriteInterfaceArray : MemoryWriteInterface[] = writes.map(writeObject => {
+      switch(writeObject.address.type) {
+        case "LocalAddress": {
+          const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.basePointer.value) + writeObject.address.offset.value;
+          return {
+            type: "MemoryWriteInterface",
+            address: writeAddress,
+            value: writeObject.value,
+            dataType: writeObject.datatype
+          };
+        }
+    
+        case "DataSegmentAddress": {
+          const writeAddress = writeObject.address.offset.value;
+          return {
+            type: "MemoryWriteInterface",
+            address: writeAddress,
+            value: writeObject.value,
+            dataType: writeObject.datatype
+          };
+        }
+        
+        case "IntegerConstant": {
+          const writeAddress = writeObject.address.value
+          return {
+            type: "MemoryWriteInterface",
+            address: writeAddress,
+            value: writeObject.value,
+            dataType: writeObject.datatype
+          };
+        }
+        
+        case "ReturnObjectAddress": {
+          if(writeObject.address.subtype === "load") {
+            throw new Error("Return object load instruction found in memory write")
+          }
+          const writeAddress = BigInt(this.memory.sharedWasmGlobalVariables.basePointer.value) + writeObject.address.offset.value;
+          
+          return {
+            type: "MemoryWriteInterface",
+            address: writeAddress,
+            value: writeObject.value,
+            dataType: writeObject.datatype
+          };
+        }
+    
+        case "DynamicAddress": {
+          throw new Error("Dynamic address should not be processed in memory write");
+        }
+    
+        case "FunctionTableIndex": {
+          // TODO: Figur out later
+          throw new Error("Havent implemented")
+        }
+    
+        case "FloatConstant": {
+          throw new Error("Cannot access an address whose value is a float");
+        }
+      }
+    })    
   private resolveValueToConstantP(value: StashItem): ConstantP {
     // if ConstantP return itself
     if (value.type === "IntegerConstant" || value.type === "FloatConstant") {
@@ -122,14 +208,45 @@ export class Runtime {
     return newRuntime.pushValue(value);
   }
 
-  stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number): Runtime {
+  stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number, parameters: StashItem[]): Runtime {
     const newMemory = this.memory.stackFrameSetup(sizeOfParams, sizeOfLocals, sizeOfReturn);
-
-    return new Runtime(
+    const newRuntime = new Runtime(
       this.control,
       this.stash,
       newMemory
     )
+
+    let offset = 0;
+    const writeParameters : RuntimeMemoryWrite[] = parameters.map(writeObject => {
+      if(writeObject.type === "IntegerConstant" || writeObject.type === "FloatConstant") {
+        const size = getSizeOfScalarDataType(writeObject.dataType)
+        offset -= size;
+
+        const writeAddress : LocalAddress = {
+          type: "LocalAddress",
+          offset: {
+            type: "IntegerConstant",
+            value: BigInt(offset),
+            dataType: "unsigned int"
+          },
+          dataType: "pointer"
+        }
+
+        const res : RuntimeMemoryWrite = {
+          type: "RuntimeMemoryWrite",
+          address: writeAddress,
+          value: writeObject,
+          datatype: writeObject.dataType
+        }
+
+        return res;
+      } else {
+        throw new Error("Not implemented yet: pointers as function arguments");
+      }
+    })
+    const writtenRuntime = newRuntime.memoryWrite(writeParameters);
+
+    return writtenRuntime;
   }
 
   stackFrameTearDown(stackPointer: number, basePointer: number) {
@@ -145,7 +262,6 @@ export class Runtime {
   getPointers() : SharedWasmGlobalVariables {
     return this.memory.sharedWasmGlobalVariables;
   }
-
 
   // Control functions
   // function to push general instruction/CNodeP onto the control

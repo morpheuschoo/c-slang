@@ -18,6 +18,7 @@ export enum InstructionType {
   WHILE = "WHILE",
   STACKFRAMETEARDOWNINSTRUCTION = "STACKFRAMETEARDOWNINSTRUCTION",
   CALLINSTRUCTION = "CALLINSTRUCTION",
+  FUNCTIONINDEXWRAPPER = "FUNCTIONINDEXWRAPPER",
   BREAK_MARK = "BREAK_MARK",
   CASE_JUMP = "CASE_JUMP",
   CASE_MARK = "CASE_MARK",
@@ -139,6 +140,14 @@ export const callInstruction = (calledFunction: CalledFunction, functionDetails:
   functionDetails: functionDetails
 })
 
+export interface FunctionIndexWrapper {
+  type: InstructionType.FUNCTIONINDEXWRAPPER,
+}
+
+export const functionIndexWrapper = (): FunctionIndexWrapper => ({
+  type: InstructionType.FUNCTIONINDEXWRAPPER
+})
+
 export interface BreakMarkInstruction extends BaseInstruction {
   type: InstructionType.BREAK_MARK;
 }
@@ -247,6 +256,7 @@ export type Instruction =
   | MemoryLoadInstruction
   | StackFrameTearDownInstruction
   | CallInstruction
+  | FunctionIndexWrapper
   | WhileLoopInstruction
   | WhileLoopInstruction
   | BreakMarkInstruction
