@@ -290,7 +290,7 @@ export const NodeEvaluator: {
   },
 
   MemoryStore: (runtime: Runtime, node: MemoryStore): Runtime => {
-    let addressPush;
+    let addressPush : ControlItem;
     
     // handle target address (where we are storing)
     switch(node.address.type) {
@@ -299,6 +299,10 @@ export const NodeEvaluator: {
           BigInt(runtime.getPointers().basePointer.value) + node.address.offset.value,
           node.dataType
         );
+        break;
+
+      case "DynamicAddress":
+        addressPush = node.address.address
         break;
 
       case "DataSegmentAddress":
@@ -395,8 +399,8 @@ export const NodeEvaluator: {
 
     const newRuntime = runtime.push([
       ...node.args,
-      functionIndexWrapper(),
       funcIndex,
+      functionIndexWrapper(),
       callInstruction(
         node.calledFunction,
         node.functionDetails
