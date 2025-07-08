@@ -49,7 +49,7 @@ export async function compile(
         generateCompilationWarningMessage(w.message, cSourceCode, w.position),
       ),
     );
-    interpret(astRootNode);
+    interpret(astRootNode, includedModules);
 
     const wasmModule = translate(astRootNode, moduleRepository);
     const output = await compileWatToWasm(generateWat(wasmModule));
@@ -180,5 +180,5 @@ export function interpret_C_AST(
 ) {
   const { cAstRoot } = parse(cSourceCode, moduleRepository);
   const { astRootNode } = process(cAstRoot, moduleRepository);
-  interpret(astRootNode);
+  // interpret(astRootNode);
 }

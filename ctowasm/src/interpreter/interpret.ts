@@ -1,27 +1,58 @@
 import { CAstRootP } from "~src/processor/c-ast/core";
 import { Runtime } from "~src/interpreter/runtime";
 import { Control } from "./utils/control";
+import ModuleRepository, { ModuleName } from "~src/modules";
 
 export class Interpreter {
   private readonly runtimeStack: Runtime[];
   private readonly astRootNode: CAstRootP;
+  private readonly includedModules: ModuleName[];
 
   constructor(
-    astRootNode: CAstRootP
+    astRootNode: CAstRootP,
+    includedModules: ModuleName[]
   ) {
     this.astRootNode = astRootNode;
     this.runtimeStack = [];
+    this.includedModules = includedModules;
   }
 
-  interpret(): void {
+  async interpret(): Promise<void> {
     Runtime.astRootP = this.astRootNode;
-    const mainFunction = Runtime.astRootP.functions.find(x => x.name === "main");
+    Runtime.includedModules = this.includedModules;
 
+    const mainFunction = Runtime.astRootP.functions.find(x => x.name === "main");
+    
     if(!mainFunction) {
       throw new Error("Main function not defined");
     }
-    const initialRuntime = new Runtime(new Control([...mainFunction.body].reverse()));
 
+    // call main
+    const initialRuntime = new Runtime(new Control([{
+      type: "FunctionCall",
+      calledFunction: {
+        type: "DirectlyCalledFunction",
+        functionName: "main"
+      },
+      functionDetails: {
+        sizeOfParams: 0,
+        sizeOfReturn: 4,
+        parameters: [],
+        returnObjects: [{
+          dataType: "signed int",
+          offset: 0
+        }]
+      },
+      args: [],
+    }]))
+    
+    Runtime.modules = new ModuleRepository(initialRuntime.cloneMemory().memory);
+
+    for(const moduleName of Runtime.includedModules) {
+      if (typeof Runtime.modules.modules[moduleName].instantiate !== "undefined") {
+        await (Runtime.modules.modules[moduleName].instantiate as () => Promise<void>)();
+      }
+    }
     this.runtimeStack.push(initialRuntime);
     
     let currentRuntime = initialRuntime;

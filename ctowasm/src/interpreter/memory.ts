@@ -1,11 +1,12 @@
 import { KB, WASM_PAGE_IN_HEX } from "~src/common/constants";
-import { calculateNumberOfPagesNeededForBytes, isFloatType, isIntegerType, primaryDataTypeSizes } from "~src/common/utils";
+import { calculateNumberOfPagesNeededForBytes, getSizeOfScalarDataType, isFloatType, isIntegerType, primaryDataTypeSizes } from "~src/common/utils";
 import { WASM_ADDR_TYPE } from "~src/translator/memoryUtil";
 import { SharedWasmGlobalVariables } from "~src/modules";
 import { FloatDataType, IntegerDataType, ScalarCDataType } from "~src/common/types";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { convertConstantToByteStr } from "~src/processor/byteStrUtil";
-import { createMemoryAddress, MemoryAddress } from "~src/interpreter/utils/addressUtils";
+import { Runtime } from "./runtime";
+import { createMemoryAddress, MemoryAddress, resolveValueToConstantP, RuntimeMemoryPair } from "~src/interpreter/utils/addressUtils";
 import { StashItem } from "~src/interpreter/utils/stash";
 
 export interface MemoryWriteInterface {
@@ -87,6 +88,47 @@ export class Memory {
   }
 
   // sets the values for stack pointer, base pointer, heap pointer
+  
+  // Coppies the current memory buffer and pointers on to Global Modules memory
+  writeToModuleMemory() {
+    const memoryView = new Uint8Array(this.memory.buffer);
+    const moduleView = new Uint8Array(Runtime.modules.memory.buffer);
+
+    if(memoryView.length !== moduleView.length) {
+      throw new Error(`Memory size mismatch: interpreter memory length (${memoryView.length}) does not match module memory length (${moduleView.length})`);
+    }
+
+    for(let i = 0;i < memoryView.byteLength;i++) {
+      moduleView[i] = memoryView[i];
+    }
+
+    Runtime.modules.sharedWasmGlobalVariables.basePointer.value = this.sharedWasmGlobalVariables.basePointer.value;
+    Runtime.modules.sharedWasmGlobalVariables.heapPointer.value = this.sharedWasmGlobalVariables.heapPointer.value;
+    Runtime.modules.sharedWasmGlobalVariables.stackPointer.value = this.sharedWasmGlobalVariables.stackPointer.value;
+  }
+
+  // Create a new memory instance that has the same content as the modules memory
+  cloneModuleMemory(): Memory {
+    const resultMemory = this.clone();
+
+    const moduleView = new Uint8Array(Runtime.modules.memory.buffer);
+    const memoryView = new Uint8Array(resultMemory.memory.buffer);
+
+    if(memoryView.byteLength !== moduleView.byteLength) {
+      throw new Error(`Memory size mismatch: interpreter memory length (${memoryView.length}) does not match module memory length (${moduleView.length})`);
+    }
+
+    for(let i = 0;i < memoryView.byteLength;i++) {
+      memoryView[i] = moduleView[i];
+    }
+
+    resultMemory.sharedWasmGlobalVariables.basePointer.value = Runtime.modules.sharedWasmGlobalVariables.basePointer.value;
+    resultMemory.sharedWasmGlobalVariables.heapPointer.value = Runtime.modules.sharedWasmGlobalVariables.heapPointer.value;
+    resultMemory.sharedWasmGlobalVariables.stackPointer.value = Runtime.modules.sharedWasmGlobalVariables.stackPointer.value;
+  
+    return resultMemory;
+  }
+
   setPointers(stackPointer: number, basePointer: number, heapPointer: number) {
     if(heapPointer > stackPointer) {
       throw new Error("Segmentation fault: Heap pointer clashed with stack pointer");
@@ -108,20 +150,46 @@ export class Memory {
     };
   }
 
-  stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number): Memory {
+  stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number, parameters: StashItem[]): Memory {
     const newMemory = this.clone();
     const totalSize = sizeOfParams + sizeOfLocals + sizeOfReturn;
-    
+
     const SP = this.sharedWasmGlobalVariables.stackPointer.value - totalSize;
     const BP = this.sharedWasmGlobalVariables.stackPointer.value - sizeOfReturn;
-    
+
     newMemory.setPointers(
       SP,
       BP,
       this.sharedWasmGlobalVariables.heapPointer.value
     )
 
-    return newMemory;
+    let offset = 0;
+    const writeParameters: MemoryWriteInterface[] = parameters.map(writeObject => {
+      if (writeObject.type !== "IntegerConstant" && 
+          writeObject.type !== "FloatConstant" && 
+          writeObject.type !== "MemoryAddress") {
+        throw new Error(`Did not expect ${writeObject.type} in stackFrameSetup`);
+      }
+
+      const size = getSizeOfScalarDataType(writeObject.dataType)
+      offset -= size;
+
+      const writeAddress = BigInt(offset) + BigInt(newMemory.sharedWasmGlobalVariables.basePointer.value);
+
+      // if MemoryAddress convert it to a ConstantP
+      const writeValue = resolveValueToConstantP(writeObject);
+
+      // ConstantP is stored as ConstantP
+      return {
+        type: "MemoryWriteInterface",
+        address: writeAddress,
+        dataType: writeObject.dataType,
+        value: writeValue
+      };
+
+    });
+
+    return newMemory.write(writeParameters);
   }
 
   stackFrameTearDown(stackPointer: number, basePointer: number): Memory {

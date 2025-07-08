@@ -6,10 +6,10 @@ import { NodeEvaluator } from "~src/interpreter/evaluators/nodeEvaluator";
 import { InstructionEvaluator } from "~src/interpreter/evaluators/instructionEvaluator";
 import { FunctionDefinitionP } from "~src/processor/c-ast/function";
 import { Memory, MemoryWriteInterface } from "./memory";
-import { ConstantP } from "~src/processor/c-ast/expression/constants";
-import { SharedWasmGlobalVariables } from "~src/modules";
+import ModuleRepository, { ModuleName, SharedWasmGlobalVariables } from "~src/modules";
 import { 
   MemoryAddress,
+  resolveValueToConstantP,
   RuntimeMemoryPair
 } from "~src/interpreter/utils/addressUtils";
 
@@ -19,6 +19,8 @@ export class Runtime {
   private readonly memory: Memory;
   
   public static astRootP: CAstRootP;
+  public static includedModules: ModuleName[];
+  public static modules: ModuleRepository;
 
   constructor(
     control?: Control,
@@ -77,29 +79,33 @@ export class Runtime {
     }
   }
   
-  // TODO
   getFunction(name: string): FunctionDefinitionP | undefined {
     return Runtime.astRootP.functions.find(x => x.name === name);
   }
 
-  // MEMORY
-  private resolveValueToConstantP(value: StashItem): ConstantP {
-    // if ConstantP return itself
-    if (value.type === "IntegerConstant" || value.type === "FloatConstant") {
-      return value;
-    }
+  // ===== MEMORY =====
 
-    // if MemoryAddress convert it to an unsigned int (equivalent)
-    return {
-      type: "IntegerConstant",
-      value: value.value,
-      dataType: "unsigned int"
-    }
+  writeToModulesMemory(): void {
+    this.memory.writeToModuleMemory();
+  }
+
+  cloneModuleMemory(): Runtime {
+    const newMemory = this.memory.cloneModuleMemory();
+
+    return new Runtime(
+      this.control,
+      this.stash,
+      newMemory,
+    )
+  }
+
+  cloneMemory(): Memory {
+    return this.memory.clone();
   }
 
   memoryWrite(pairs: RuntimeMemoryPair[]): Runtime {
     const memoryWriteInterfaceArr: MemoryWriteInterface[] = pairs.map(pair => {
-      const writeValue = this.resolveValueToConstantP(pair.value);
+      const writeValue = resolveValueToConstantP(pair.value);
 
       return {
         type: "MemoryWriteInterface",
@@ -122,8 +128,8 @@ export class Runtime {
     return newRuntime.pushValue(value);
   }
 
-  stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number): Runtime {
-    const newMemory = this.memory.stackFrameSetup(sizeOfParams, sizeOfLocals, sizeOfReturn);
+  stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number, parameters: StashItem[]): Runtime {
+    const newMemory = this.memory.stackFrameSetup(sizeOfParams, sizeOfLocals, sizeOfReturn, parameters);
 
     return new Runtime(
       this.control,
@@ -145,7 +151,6 @@ export class Runtime {
   getPointers() : SharedWasmGlobalVariables {
     return this.memory.sharedWasmGlobalVariables;
   }
-
 
   // Control functions
   // function to push general instruction/CNodeP onto the control
@@ -238,13 +243,6 @@ export class Runtime {
     }
 
     return [popedItem, newRuntime];
-  }
-
-  log(): void {
-    console.log("Stash")
-    console.log(this.stash);
-    console.log("Control")
-    console.log(this.control);
   }
 
   toString(): string {

@@ -8,7 +8,11 @@ TODO:
   - so it should start from an expressionStatement and then x = 2 and a POP
 - Compound statements?
 - no difference between int x = 1 and x = 1 (need to make a distinction)
-- declarations need to be added in
+- declarations need to be added 
+- malloc and free still have a bit of problems (Error: Type mismatch: Cannot store integer in pointer memory location)
+  - Something to do with MemoryStore
+- for loops
+- array calculations have a bit of problem (BinaryOp with LocalAddress)
 
 NOTE:
 - Pointer 4 bytes
