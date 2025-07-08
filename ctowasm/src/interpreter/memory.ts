@@ -180,7 +180,28 @@ export class Memory {
 
         return res;
       } else {
-        throw new Error("Not implemented yet: pointers as function arguments");
+        const size = getSizeOfScalarDataType("unsigned int")
+        offset -= size;
+
+        if(writeObject.type !== "MemoryAddress") {
+          throw new Error("Expected parameter to be of type 'MemoryAddress' for pointer parameter in stackFrameSetup.");
+        }
+
+        const writeAddress : bigint = BigInt(offset) + BigInt(newMemory.sharedWasmGlobalVariables.basePointer.value)
+        const writeValue : ConstantP = {
+          type: "IntegerConstant",
+          value: writeObject.value,
+          dataType: "unsigned int"
+        }
+
+        const res : MemoryWriteInterface = {
+          type: "MemoryWriteInterface",
+          address: writeAddress,
+          dataType: "unsigned int",
+          value: writeValue
+        }
+
+        return res;
       }
     })
 
