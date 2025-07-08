@@ -6,7 +6,7 @@ import { FloatDataType, IntegerDataType, ScalarCDataType } from "~src/common/typ
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { convertConstantToByteStr } from "~src/processor/byteStrUtil";
 import { Runtime } from "./runtime";
-import { createMemoryAddress, MemoryAddress, RuntimeMemoryPair } from "~src/interpreter/utils/addressUtils";
+import { createMemoryAddress, MemoryAddress, resolveValueToConstantP, RuntimeMemoryPair } from "~src/interpreter/utils/addressUtils";
 import { StashItem } from "~src/interpreter/utils/stash";
 
 export interface MemoryWriteInterface {
@@ -153,10 +153,10 @@ export class Memory {
   stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number, parameters: StashItem[]): Memory {
     const newMemory = this.clone();
     const totalSize = sizeOfParams + sizeOfLocals + sizeOfReturn;
-    
+
     const SP = this.sharedWasmGlobalVariables.stackPointer.value - totalSize;
     const BP = this.sharedWasmGlobalVariables.stackPointer.value - sizeOfReturn;
-    
+
     newMemory.setPointers(
       SP,
       BP,
@@ -164,25 +164,30 @@ export class Memory {
     )
 
     let offset = 0;
-    const writeParameters : MemoryWriteInterface[] = parameters.map(writeObject => {
-      if(writeObject.type === "IntegerConstant" || writeObject.type === "FloatConstant") {
-        const size = getSizeOfScalarDataType(writeObject.dataType)
-        offset -= size;
-
-        const writeAddress : bigint = BigInt(offset) + BigInt(newMemory.sharedWasmGlobalVariables.basePointer.value)
-
-        const res : MemoryWriteInterface = {
-          type: "MemoryWriteInterface",
-          address: writeAddress,
-          dataType: writeObject.dataType,
-          value: writeObject
-        }
-
-        return res;
-      } else {
-        throw new Error("Not implemented yet: pointers as function arguments");
+    const writeParameters: MemoryWriteInterface[] = parameters.map(writeObject => {
+      if (writeObject.type !== "IntegerConstant" && 
+          writeObject.type !== "FloatConstant" && 
+          writeObject.type !== "MemoryAddress") {
+        throw new Error(`Did not expect ${writeObject.type} in stackFrameSetup`);
       }
-    })
+
+      const size = getSizeOfScalarDataType(writeObject.dataType)
+      offset -= size;
+
+      const writeAddress = BigInt(offset) + BigInt(newMemory.sharedWasmGlobalVariables.basePointer.value);
+
+      // if MemoryAddress convert it to a ConstantP
+      const writeValue = resolveValueToConstantP(writeObject);
+
+      // ConstantP is stored as ConstantP
+      return {
+        type: "MemoryWriteInterface",
+        address: writeAddress,
+        dataType: writeObject.dataType,
+        value: writeValue
+      };
+
+    });
 
     return newMemory.write(writeParameters);
   }

@@ -20,14 +20,31 @@ export class Interpreter {
   async interpret(): Promise<void> {
     Runtime.astRootP = this.astRootNode;
     Runtime.includedModules = this.includedModules;
-    console.log(this.astRootNode);
 
     const mainFunction = Runtime.astRootP.functions.find(x => x.name === "main");
     
     if(!mainFunction) {
       throw new Error("Main function not defined");
     }
-    const initialRuntime = new Runtime(new Control([...mainFunction.body].reverse()));
+
+    // call main
+    const initialRuntime = new Runtime(new Control([{
+      type: "FunctionCall",
+      calledFunction: {
+        type: "DirectlyCalledFunction",
+        functionName: "main"
+      },
+      functionDetails: {
+        sizeOfParams: 0,
+        sizeOfReturn: 4,
+        parameters: [],
+        returnObjects: [{
+          dataType: "signed int",
+          offset: 0
+        }]
+      },
+      args: [],
+    }]))
     
     Runtime.modules = new ModuleRepository(initialRuntime.cloneMemory().memory);
 

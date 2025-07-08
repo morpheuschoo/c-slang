@@ -6,10 +6,10 @@ import { NodeEvaluator } from "~src/interpreter/evaluators/nodeEvaluator";
 import { InstructionEvaluator } from "~src/interpreter/evaluators/instructionEvaluator";
 import { FunctionDefinitionP } from "~src/processor/c-ast/function";
 import { Memory, MemoryWriteInterface } from "./memory";
-import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import ModuleRepository, { ModuleName, SharedWasmGlobalVariables } from "~src/modules";
 import { 
   MemoryAddress,
+  resolveValueToConstantP,
   RuntimeMemoryPair
 } from "~src/interpreter/utils/addressUtils";
 
@@ -79,12 +79,12 @@ export class Runtime {
     }
   }
   
-  // TODO
   getFunction(name: string): FunctionDefinitionP | undefined {
     return Runtime.astRootP.functions.find(x => x.name === name);
   }
 
-  // MEMORY
+  // ===== MEMORY =====
+
   writeToModulesMemory(): void {
     this.memory.writeToModuleMemory();
   }
@@ -102,24 +102,10 @@ export class Runtime {
   cloneMemory(): Memory {
     return this.memory.clone();
   }
-  
-  private resolveValueToConstantP(value: MemoryAddress | ConstantP): ConstantP {
-    // if ConstantP return itself
-    if (value.type === "IntegerConstant" || value.type === "FloatConstant") {
-      return value;
-    }
-
-    // if MemoryAddress convert it to an unsigned int (equivalent)
-    return {
-      type: "IntegerConstant",
-      value: value.value,
-      dataType: "unsigned int"
-    }
-  }
 
   memoryWrite(pairs: RuntimeMemoryPair[]): Runtime {
     const memoryWriteInterfaceArr: MemoryWriteInterface[] = pairs.map(pair => {
-      const writeValue = this.resolveValueToConstantP(pair.value);
+      const writeValue = resolveValueToConstantP(pair.value);
 
       return {
         type: "MemoryWriteInterface",
@@ -257,13 +243,6 @@ export class Runtime {
     }
 
     return [popedItem, newRuntime];
-  }
-
-  log(): void {
-    console.log("Stash")
-    console.log(this.stash);
-    console.log("Control")
-    console.log(this.control);
   }
 
   toString(): string {

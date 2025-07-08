@@ -14,6 +14,10 @@ export class Stash extends Stack<StashItem, Stash> {
     return item.type === "IntegerConstant" || item.type === "FloatConstant";
   }
 
+  static isMemoryAddress(value: StashItem): value is MemoryAddress {
+    return value.type === 'MemoryAddress';
+  }
+
   toString(): string {
     if (this.isEmpty()) {
       return "  <empty>";

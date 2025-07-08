@@ -31,11 +31,8 @@ import { StashItem, Stash } from "~src/interpreter/utils/stash";
 import { Module, ModuleFunction } from "~src/modules/types";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { ReturnStatementP } from "~src/processor/c-ast/statement/jumpStatement";
-import { isConstantTrue, performConstantBinaryOperation } from "~src/interpreter/utils/constantsUtils"
-import { 
-  createMemoryAddress, 
-  isMemoryAddress, 
-} from "~src/interpreter/utils/addressUtils";
+import { isConstantTrue, performConstantAndAddressBinaryOperation } from "~src/interpreter/utils/constantsUtils"
+import { createMemoryAddress } from "~src/interpreter/utils/addressUtils";
 
 export const InstructionEvaluator: {
   [InstrType in Instruction["type"]]: (
@@ -77,11 +74,16 @@ export const InstructionEvaluator: {
     const [right, runtimeAfterPopRight] = runtime.popValue();
     const [left, runtimeAfterPopLeft] = runtimeAfterPopRight.popValue();
 
-    if (!Stash.isConstant(left) || !Stash.isConstant(right)) {
-      throw new Error(`Binary operation '${instruction.operator} requires an operand, but stash is empty'`);
+    if (
+      !(Stash.isConstant(left) || Stash.isMemoryAddress(left)) ||
+      !(Stash.isConstant(right) || Stash.isMemoryAddress(right))
+    ) {
+      throw new Error(`Binary operator '${instruction.operator}' encountered operands that are not a constant or an address`);
     }
 
-    return runtimeAfterPopLeft.pushValue(performConstantBinaryOperation(left, instruction.operator, right));
+    return runtimeAfterPopLeft.pushValue(
+      performConstantAndAddressBinaryOperation(left, instruction.operator, right)
+    );
   },
 
   [InstructionType.BRANCH]: (runtime: Runtime, instruction: branchOpInstruction): Runtime => {
@@ -185,10 +187,10 @@ export const InstructionEvaluator: {
 
   [InstructionType.CALLINSTRUCTION]: (runtime: Runtime, instruction: CallInstruction): Runtime => {
     let [ functionAddress, poppedRuntime ] = runtime.popValue();
-    
+
     const numOfParameters = instruction.functionDetails.parameters.length;
     let parameters: StashItem[] = [];
-    for(let i = 0;i < numOfParameters; i++) {
+    for(let i = 0; i < numOfParameters; i++) {
       const [parameter, newRuntime] = poppedRuntime.popValue();
 
       parameters.push(parameter);
@@ -205,7 +207,7 @@ export const InstructionEvaluator: {
     if(calledFunction.functionName === "print_int") {
       const temp = parameters[0];
       if(temp.type !== "IntegerConstant") {
-        throw new Error("FUKK");
+        throw new Error("Error");
       }
 
       console.log("PRINTED VALUE: ", temp.value);
@@ -222,7 +224,7 @@ export const InstructionEvaluator: {
       const sizeOfParams = instruction.functionDetails.sizeOfParams;
       const sizeOfLocals = func.sizeOfLocals;
       const sizeOfReturn = instruction.functionDetails.sizeOfReturn;
-  
+
       const writtenRuntime = poppedRuntime.stackFrameSetup(
         sizeOfParams,
         sizeOfLocals,
@@ -270,7 +272,7 @@ export const InstructionEvaluator: {
       if(!returnObjects) {
         func.jsFunction.apply(encapsulatingModule, parameters.map(x => {
           if(x.type !== "IntegerConstant" && x.type !== "FloatConstant") {
-            throw new Error("FUCK");
+            throw new Error("Error");
           }
           return Number(x.value)
         }));
@@ -282,7 +284,7 @@ export const InstructionEvaluator: {
       } else {
         const res : unknown = func.jsFunction.apply(encapsulatingModule, parameters.map(x => {
           if(x.type !== "IntegerConstant" && x.type !== "FloatConstant") {
-            throw new Error("FUCK");
+            throw new Error("Error");
           }
           return Number(x.value);
         }));
@@ -394,7 +396,13 @@ export const InstructionEvaluator: {
       }
 
       // manually check for equality
-      const isTrue = isConstantTrue(performConstantBinaryOperation(left, "==", right));
+      const isTrueValue = performConstantAndAddressBinaryOperation(left, "==", right);
+
+      if (Stash.isMemoryAddress(isTrueValue)) {
+        throw new Error(`Case jump '${instruction.caseValue}' encountered a MemoryAddress`);
+      }
+
+      const isTrue = isConstantTrue(isTrueValue);
       
       // if not true, return stash after popping the case expression
       if (!isTrue) {
@@ -427,7 +435,7 @@ export const InstructionEvaluator: {
   [InstructionType.TYPE_CONVERSION]: (runtime: Runtime, instruction: TypeConversionInstruction): Runtime => {
     const [address, newRuntime] = runtime.popValue();
     
-    if (!isMemoryAddress(address)) {
+    if (!Stash.isMemoryAddress(address)) {
       throw new Error(`Expected MemoryAddress in Stash but got ${address.type}`);
     }
 
