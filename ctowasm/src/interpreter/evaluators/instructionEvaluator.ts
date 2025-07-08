@@ -34,7 +34,8 @@ import { ReturnStatementP } from "~src/processor/c-ast/statement/jumpStatement";
 import { isConstantTrue, performConstantBinaryOperation } from "~src/interpreter/utils/constantsUtils"
 import { 
   createMemoryAddress, 
-  isMemoryAddress, 
+  isMemoryAddress,
+  MemoryAddress, 
 } from "~src/interpreter/utils/addressUtils";
 
 export const InstructionEvaluator: {
@@ -115,28 +116,29 @@ export const InstructionEvaluator: {
       throw new Error(`Did not expect FunctionTableIndex`);
     }
 
-    if (address.dataType !== instruction.dataType) {
-      throw new Error(`Address dataType (${address.dataType}) doesn't match instruction dataType (${instruction.dataType})`);
-    }
+    // if (address.dataType !== instruction.dataType) {
+    //   throw new Error(`Address dataType (${address.dataType}) doesn't match instruction dataType (${instruction.dataType})`);
+    // }
 
     // TODO: This type checking needs to be checked if it works / fixed
-    switch(value.type) {
-      case "IntegerConstant":
-        if (!isIntegerType(instruction.dataType)) {
-          throw new Error(`Type mismatch: Cannot store integer in ${instruction.dataType} memory location`);
-        }
-        break;
-      case "FloatConstant":
-        if (isIntegerType(instruction.dataType)) {
-          throw new Error(`Type mismatch: Cannot store float in ${instruction.dataType} memory location`);
-        }
-        break;
-      case "MemoryAddress":
-        if (instruction.dataType !== "pointer") {
-          throw new Error(`Type mismatch: Cannot store memory address in non-pointer location (${instruction.dataType})`);
-        }
-        break;
-    }
+    // switch(value.type) {
+    //   case "IntegerConstant":
+    //     if (!isIntegerType(instruction.dataType)) {
+    //       console.log(runtime, instruction, value);
+    //       throw new Error(`Type mismatch: Cannot store integer in ${instruction.dataType} memory location`);
+    //     }
+    //     break;
+    //   case "FloatConstant":
+    //     if (isIntegerType(instruction.dataType)) {
+    //       throw new Error(`Type mismatch: Cannot store float in ${instruction.dataType} memory location`);
+    //     }
+    //     break;
+    //   case "MemoryAddress":
+    //     if (instruction.dataType !== "pointer") {
+    //       throw new Error(`Type mismatch: Cannot store memory address in non-pointer location (${instruction.dataType})`);
+    //     }
+    //     break;
+    // }
 
     return runtimeAfter.memoryWrite([{
       type: "RuntimeMemoryPair",
@@ -166,7 +168,7 @@ export const InstructionEvaluator: {
   },
 
   [InstructionType.FUNCTIONINDEXWRAPPER]: (runtime: Runtime, instruction: FunctionIndexWrapper): Runtime => {
-    const [ index, popedRuntime ] = runtime.popControl();
+    const [ index, poppedRuntime ] = runtime.popValue();
 
     if(index.type !== "IntegerConstant") {
       throw new Error("Wrong type for function index value in Function index wrapper, expected: IntegerConstant");
@@ -178,7 +180,7 @@ export const InstructionEvaluator: {
       dataType: "pointer"
     }
 
-    const newRuntime = popedRuntime.push([wrappedFunctionIndex]);
+    const newRuntime = poppedRuntime.push([wrappedFunctionIndex]);
 
     return newRuntime;
   },
@@ -202,16 +204,6 @@ export const InstructionEvaluator: {
     
     const calledFunction = Runtime.astRootP.functionTable[Number(functionAddress.index.value)];
     
-    if(calledFunction.functionName === "print_int") {
-      const temp = parameters[0];
-      if(temp.type !== "IntegerConstant") {
-        throw new Error("FUKK");
-      }
-
-      console.log("PRINTED VALUE: ", temp.value);
-      return poppedRuntime;
-    }
-
     if(Runtime.astRootP.functions.find(x => x.name === calledFunction.functionName)) {
       const func = Runtime.astRootP.functions.find(x => x.name === calledFunction.functionName);
       if(!func) {
@@ -269,10 +261,13 @@ export const InstructionEvaluator: {
 
       if(!returnObjects) {
         func.jsFunction.apply(encapsulatingModule, parameters.map(x => {
-          if(x.type !== "IntegerConstant" && x.type !== "FloatConstant") {
-            throw new Error("FUCK");
+          if(x.type === "IntegerConstant" || x.type === "FloatConstant" || x.type === "MemoryAddress") {
+            return Number(x.value);
+          } else if(x.type === "FunctionTableIndex") {
+            return Number(x.index);
+          } else {
+            throw new Error(`Unsupported parameter type '${x}' for external function call`);
           }
-          return Number(x.value)
         }));
 
         // Clone module repository memory after function call
@@ -281,10 +276,13 @@ export const InstructionEvaluator: {
         return finalRuntime;
       } else {
         const res : unknown = func.jsFunction.apply(encapsulatingModule, parameters.map(x => {
-          if(x.type !== "IntegerConstant" && x.type !== "FloatConstant") {
-            throw new Error("FUCK");
+          if(x.type === "IntegerConstant" || x.type === "FloatConstant" || x.type === "MemoryAddress") {
+            return Number(x.value)
+          } else if(x.type === "FunctionTableIndex") {
+            return Number(x.index);
+          } else {
+            throw new Error(`Unsupported parameter type '${x}' for external function call`);
           }
-          return Number(x.value);
         }));
 
         // Clone module repository memory after function call
