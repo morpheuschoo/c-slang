@@ -52,6 +52,7 @@ export abstract class Module {
    * Print to "stdout" by calling the printFunction defined in config.
    */
   print(str: string) {
+    console.log(str);
     this.config.printFunction(str);
   }
 }
