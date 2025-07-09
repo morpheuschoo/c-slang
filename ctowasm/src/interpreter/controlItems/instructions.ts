@@ -14,6 +14,7 @@ export enum InstructionType {
   MEMORY_STORE = "MEMORY_STORE",
   MEMORY_LOAD = "MEMORY_LOAD",
   WHILE = "WHILE",
+  FORLOOP = "FORLOOP",
   STACKFRAMETEARDOWNINSTRUCTION = "STACKFRAMETEARDOWNINSTRUCTION",
   CALLINSTRUCTION = "CALLINSTRUCTION",
   FUNCTIONINDEXWRAPPER = "FUNCTIONINDEXWRAPPER",
@@ -109,10 +110,30 @@ export const whileLoopInstruction = (
   hasContinue,
 })
 
+export interface ForLoopInstruction extends BaseInstruction {
+  type: InstructionType.FORLOOP;
+  body: CNodeP[];
+  update: CNodeP[];
+  condition: ExpressionP;
+  hasContinue: boolean;
+}
+
+export const forLoopInstruction = (
+  body: CNodeP[],
+  update: CNodeP[],
+  condition: ExpressionP,
+  hasContinue: boolean,
+): ForLoopInstruction => ({
+  type: InstructionType.FORLOOP,
+  body,
+  update,
+  condition,
+  hasContinue,
+})
+
 // ===== FUNCTION CALLS =====
 
-// Tears down the current stack frame and 
-// moves base pointer and stack pointer to the previous stack frame
+// Tears down the current stack frame and moves base pointer and stack pointer to the previous stack frame
 export interface StackFrameTearDownInstruction {
   type: InstructionType.STACKFRAMETEARDOWNINSTRUCTION,
   basePointer: number,
@@ -245,7 +266,7 @@ export type Instruction =
   | CallInstruction
   | FunctionIndexWrapper
   | WhileLoopInstruction
-  | WhileLoopInstruction
+  | ForLoopInstruction
   | BreakMarkInstruction
   | CaseJumpInstruction
   | CaseMarkInstruction

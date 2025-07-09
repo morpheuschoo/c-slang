@@ -20,6 +20,7 @@ import {
   CallInstruction,
   StackFrameTearDownInstruction,
   FunctionIndexWrapper,
+  ForLoopInstruction,
  } from "~src/interpreter/controlItems/instructions";
 import { FunctionTableIndex, MemoryStore } from "~src/processor/c-ast/memory";
 import { getSizeOfScalarDataType, isIntegerType } from "~src/common/utils";
@@ -346,6 +347,32 @@ export const InstructionEvaluator: {
       instruction.condition,
       instruction
     ]);
+
+    if (instruction.hasContinue) {
+      updatedRuntime = updatedRuntime.push([continueMarkInstruction()]);
+    }
+
+    return updatedRuntime.push(instruction.body);
+  },
+
+  [InstructionType.FORLOOP]: (runtime: Runtime, instruction: ForLoopInstruction): Runtime => {
+    let [condition, updatedRuntime] = runtime.popValue();
+
+    if (!Stash.isConstant(condition)) {
+      throw new Error("While instruction expects a boolean")
+    }
+    
+    const isTrue = isConstantTrue(condition);
+
+    if (!isTrue) {
+      return updatedRuntime;
+    }
+
+    updatedRuntime = updatedRuntime.push([
+      ...instruction.update,
+      instruction.condition,
+      instruction,
+    ])
 
     if (instruction.hasContinue) {
       updatedRuntime = updatedRuntime.push([continueMarkInstruction()]);
