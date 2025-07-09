@@ -6,7 +6,7 @@ import { FloatDataType, IntegerDataType, ScalarCDataType } from "~src/common/typ
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { convertConstantToByteStr } from "~src/processor/byteStrUtil";
 import { Runtime } from "./runtime";
-import { createMemoryAddress, MemoryAddress, resolveValueToConstantP, RuntimeMemoryPair } from "~src/interpreter/utils/addressUtils";
+import { createMemoryAddress, MemoryAddress, resolveValueToConstantP } from "~src/interpreter/utils/addressUtils";
 import { StashItem } from "~src/interpreter/utils/stash";
 
 export interface MemoryWriteInterface {
@@ -165,13 +165,17 @@ export class Memory {
 
     let offset = 0;
     const writeParameters: MemoryWriteInterface[] = parameters.map(writeObject => {
-      if (writeObject.type !== "IntegerConstant" && 
-          writeObject.type !== "FloatConstant" && 
-          writeObject.type !== "MemoryAddress") {
+      if (
+        writeObject.type !== "IntegerConstant" && 
+        writeObject.type !== "FloatConstant" && 
+        writeObject.type !== "MemoryAddress"
+      ) {
         throw new Error(`Did not expect ${writeObject.type} in stackFrameSetup`);
       }
 
-      const size = getSizeOfScalarDataType(writeObject.dataType)
+      const dataType: ScalarCDataType = writeObject.type === "MemoryAddress" ? "pointer" : writeObject.dataType;
+
+      const size = getSizeOfScalarDataType(dataType);
       offset -= size;
 
       const writeAddress = BigInt(offset) + BigInt(newMemory.sharedWasmGlobalVariables.basePointer.value);
@@ -183,7 +187,7 @@ export class Memory {
       return {
         type: "MemoryWriteInterface",
         address: writeAddress,
-        dataType: writeObject.dataType,
+        dataType: dataType,
         value: writeValue
       };
 
@@ -231,9 +235,9 @@ export class Memory {
     return newMemory;
   }
 
-  load(address: MemoryAddress): StashItem {
+  load(address: MemoryAddress, dataType: ScalarCDataType): StashItem {
     // handles pointers
-    if(address.dataType === "pointer") {
+    if(dataType === "pointer") {
       // Load pointer value as "unsigned int" as they occupy the same amount of space
       const size = primaryDataTypeSizes["unsigned int"];
       this.checkOutOfBounds(address.value);
@@ -246,15 +250,15 @@ export class Memory {
       }
       
       // returns a MemoryAddress instead of a ConstantP
-      return createMemoryAddress(value, address.dataType);
+      return createMemoryAddress(value);
     }
     
     // handles the rest of the ScalarCDataTypes
-    const size = primaryDataTypeSizes[address.dataType];
+    const size = primaryDataTypeSizes[dataType];
     this.checkOutOfBounds(address.value);
     
     let view = new Uint8Array(this.memory.buffer);
-    if(isIntegerType(address.dataType)) {
+    if(isIntegerType(dataType)) {
       let value = 0n;
       for (let i = 0; i < Math.min(size, this.memory.buffer.byteLength - Number(address.value)); i++) {
         value |= BigInt(view[Number(address.value) + i]) << BigInt(8 * i);
@@ -272,19 +276,19 @@ export class Memory {
       return {
         type: "IntegerConstant",
         value: value,
-        dataType: address.dataType as IntegerDataType
+        dataType: dataType as IntegerDataType
       }
-    } else if(isFloatType(address.dataType)) {
+    } else if(isFloatType(dataType)) {
       let view = new Uint8Array(this.memory.buffer);
       const raw = view.slice(Number(address), Number(address) + size)
-      const floatValue = address.dataType === "float" 
+      const floatValue = dataType === "float" 
         ? new Float32Array(raw.buffer, raw.byteOffset)[0] 
         : new Float64Array(raw.buffer, raw.byteOffset)[0];
       
       return {
         type: "FloatConstant",
         value: floatValue,
-        dataType: address.dataType as FloatDataType
+        dataType: dataType as FloatDataType
       }
     } else {
       throw new Error("Unknown load value type");

@@ -20,7 +20,6 @@ import {
   CallInstruction,
   StackFrameTearDownInstruction,
   FunctionIndexWrapper,
-  TypeConversionInstruction,
  } from "~src/interpreter/controlItems/instructions";
 import { FunctionTableIndex, MemoryStore } from "~src/processor/c-ast/memory";
 import { getSizeOfScalarDataType, isIntegerType } from "~src/common/utils";
@@ -32,7 +31,6 @@ import { Module, ModuleFunction } from "~src/modules/types";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { ReturnStatementP } from "~src/processor/c-ast/statement/jumpStatement";
 import { isConstantTrue, performConstantAndAddressBinaryOperation } from "~src/interpreter/utils/constantsUtils"
-import { createMemoryAddress } from "~src/interpreter/utils/addressUtils";
 
 export const InstructionEvaluator: {
   [InstrType in Instruction["type"]]: (
@@ -117,33 +115,11 @@ export const InstructionEvaluator: {
       throw new Error(`Did not expect FunctionTableIndex`);
     }
 
-    if (address.dataType !== instruction.dataType) {
-      throw new Error(`Address dataType (${address.dataType}) doesn't match instruction dataType (${instruction.dataType})`);
-    }
-
-    // TODO: This type checking needs to be checked if it works / fixed
-    switch(value.type) {
-      case "IntegerConstant":
-        if (!isIntegerType(instruction.dataType)) {
-          throw new Error(`Type mismatch: Cannot store integer in ${instruction.dataType} memory location`);
-        }
-        break;
-      case "FloatConstant":
-        if (isIntegerType(instruction.dataType)) {
-          throw new Error(`Type mismatch: Cannot store float in ${instruction.dataType} memory location`);
-        }
-        break;
-      case "MemoryAddress":
-        if (instruction.dataType !== "pointer") {
-          throw new Error(`Type mismatch: Cannot store memory address in non-pointer location (${instruction.dataType})`);
-        }
-        break;
-    }
-
     return runtimeAfter.memoryWrite([{
       type: "RuntimeMemoryPair",
       address: address,
-      value: value
+      value: value,
+      dataType: instruction.dataType,
     }])
   },
 
@@ -154,11 +130,7 @@ export const InstructionEvaluator: {
       throw new Error(`Expected MemoryAddress, but got ${address.type}`)
     }
 
-    if (address.dataType !== instruction.dataType) {
-      throw new Error(`Address dataType (${address.dataType}) doesn't match instruction dataType (${instruction.dataType})`);
-    }
-
-    return runtime.memoryLoad(address);
+    return runtime.memoryLoad(address, instruction.dataType);
   },
 
   [InstructionType.STACKFRAMETEARDOWNINSTRUCTION]: (runtime: Runtime, instruction: StackFrameTearDownInstruction): Runtime => {
@@ -430,16 +402,6 @@ export const InstructionEvaluator: {
     }
 
     return currRuntime;
-  },
-
-  [InstructionType.TYPE_CONVERSION]: (runtime: Runtime, instruction: TypeConversionInstruction): Runtime => {
-    const [address, newRuntime] = runtime.popValue();
-    
-    if (!Stash.isMemoryAddress(address)) {
-      throw new Error(`Expected MemoryAddress in Stash but got ${address.type}`);
-    }
-
-    return newRuntime.pushValue(createMemoryAddress(address.value, instruction.targetType));
   },
 
   [InstructionType.CASE_MARK]: (runtime: Runtime, instruction: CaseMarkInstruction): Runtime => {
