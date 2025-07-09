@@ -16,6 +16,7 @@ import {
   unaryOpInstruction ,
   whileLoopInstruction,
   functionIndexWrapper,
+  forLoopInstruction,
 } from "~src/interpreter/controlItems/instructions";
 import { CNodeType } from "~src/interpreter/controlItems/types";
 import { CNodeP, ExpressionP } from "~src/processor/c-ast/core";
@@ -123,9 +124,36 @@ export const NodeEvaluator: {
     return pRuntime.push([node.condition]);
   },
 
-  // TODO
   ForLoop: (runtime: Runtime, node: ForLoopP): Runtime => {
-    return new Runtime();
+    const hasBreak = containsBreakStatement(node.body);
+    const hasContinue = containsContinueStatement(node.body);
+    
+    const condition: ExpressionP = node.condition === null
+      ? {
+          type: "IntegerConstant",
+          value: 1n,
+          dataType: "signed int"
+        }
+      : node.condition;
+
+    const forLoopInstr = forLoopInstruction(
+      node.body,
+      node.update,
+      condition,
+      hasContinue
+    )
+    
+    let pRuntime = runtime;
+
+    if (hasBreak) {
+      pRuntime = pRuntime.push([breakMarkInstruction()]);
+    }
+
+    return pRuntime.push([
+      ...node.clause,
+      condition,
+      forLoopInstr
+    ])
   },
 
   // === JUMP STATEMENTS ===
