@@ -1,20 +1,23 @@
 import { CAstRootP } from "~src/processor/c-ast/core";
 import { Runtime } from "~src/interpreter/runtime";
 import { Control } from "./utils/control";
-import ModuleRepository, { ModuleName } from "~src/modules";
+import ModuleRepository, { ModuleName, ModulesGlobalConfig } from "~src/modules";
 
 export class Interpreter {
   private readonly runtimeStack: Runtime[];
   private readonly astRootNode: CAstRootP;
   private readonly includedModules: ModuleName[];
+  private readonly moduleConfig: ModulesGlobalConfig;
 
   constructor(
     astRootNode: CAstRootP,
-    includedModules: ModuleName[]
+    includedModules: ModuleName[],
+    moduleConfig: ModulesGlobalConfig
   ) {
     this.astRootNode = astRootNode;
     this.runtimeStack = [];
     this.includedModules = includedModules;
+    this.moduleConfig = moduleConfig;
   }
 
   async interpret(): Promise<void> {
@@ -46,7 +49,11 @@ export class Interpreter {
       args: [],
     }]))
     
-    Runtime.modules = new ModuleRepository(initialRuntime.cloneMemory().memory);
+    Runtime.modules = new ModuleRepository(
+      initialRuntime.cloneMemory().memory, 
+      new WebAssembly.Table({ element: "anyfunc", initial: 100 }), 
+      this.moduleConfig
+    );
 
     for(const moduleName of Runtime.includedModules) {
       if (typeof Runtime.modules.modules[moduleName].instantiate !== "undefined") {

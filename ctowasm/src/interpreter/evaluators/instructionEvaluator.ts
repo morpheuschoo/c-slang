@@ -111,14 +111,22 @@ export const InstructionEvaluator: {
       throw new Error(`Expected MemoryAddress, but got ${address.type}`)
     }
 
-    if (value.type === "FunctionTableIndex") {
-      throw new Error(`Did not expect FunctionTableIndex`);
-    }
+    // if (value.type === "FunctionTableIndex") {
+    //   throw new Error(`Did not expect FunctionTableIndex`);
+    // }
 
+    let newValue: StashItem;
+
+    if(value.type === "FunctionTableIndex") {
+      newValue = value.index
+    } else {
+      newValue = value;
+    }
+    
     return runtimeAfter.memoryWrite([{
       type: "RuntimeMemoryPair",
       address: address,
-      value: value,
+      value: newValue,
       dataType: instruction.dataType,
     }])
   },
@@ -140,16 +148,30 @@ export const InstructionEvaluator: {
   },
 
   [InstructionType.FUNCTIONINDEXWRAPPER]: (runtime: Runtime, instruction: FunctionIndexWrapper): Runtime => {
-    const [ index, popedRuntime ] = runtime.popControl();
+    const [ index, popedRuntime ] = runtime.popValue();
 
-    if(index.type !== "IntegerConstant") {
-      throw new Error("Wrong type for function index value in Function index wrapper, expected: IntegerConstant");
-    }
+    let wrappedFunctionIndex: FunctionTableIndex;
 
-    const wrappedFunctionIndex: FunctionTableIndex = {
-      type: "FunctionTableIndex",
-      index: index,
-      dataType: "pointer"
+    if(index.type === "IntegerConstant") {
+      wrappedFunctionIndex = {
+        type: "FunctionTableIndex",
+        index: index,
+        dataType: "pointer"
+      }
+    } else if(index.type === "MemoryAddress") {
+      wrappedFunctionIndex = {
+        type: "FunctionTableIndex",
+        index: {
+          type: "IntegerConstant",
+          value: index.value,
+          dataType: "unsigned int"
+        },
+        dataType: "pointer"
+      }
+    } else if(index.type === "FunctionTableIndex") {
+      wrappedFunctionIndex = index
+    } else {
+      throw new Error(`Wrong type for function index value in Function index wrapper, expected: IntegerConstant or MemoryAddress, got: ${index.type}`);
     }
 
     const newRuntime = popedRuntime.push([wrappedFunctionIndex]);
@@ -176,22 +198,22 @@ export const InstructionEvaluator: {
     
     const calledFunction = Runtime.astRootP.functionTable[Number(functionAddress.index.value)];
     
-    if(calledFunction.functionName === "print_int") {
-      const temp = parameters[0];
-      if(temp.type !== "IntegerConstant") {
-        throw new Error("Error");
-      }
+    // if(calledFunction.functionName === "print_int") {
+    //   const temp = parameters[0];
+    //   if(temp.type !== "IntegerConstant") {
+    //     throw new Error("Error");
+    //   }
 
-      console.log("PRINTED VALUE: ", temp.value);
-      return poppedRuntime;
-    }
+    //   console.log("PRINTED VALUE: ", temp.value);
+    //   return poppedRuntime;
+    // }
 
     if(Runtime.astRootP.functions.find(x => x.name === calledFunction.functionName)) {
       const func = Runtime.astRootP.functions.find(x => x.name === calledFunction.functionName);
       if(!func) {
         throw new Error("No function called: " + calledFunction.functionName);
       }
-      
+
       // Set up a new Stackframe
       const sizeOfParams = instruction.functionDetails.sizeOfParams;
       const sizeOfLocals = func.sizeOfLocals;
@@ -243,10 +265,11 @@ export const InstructionEvaluator: {
 
       if(!returnObjects) {
         func.jsFunction.apply(encapsulatingModule, parameters.map(x => {
-          if(x.type !== "IntegerConstant" && x.type !== "FloatConstant") {
-            throw new Error("Error");
-          }
-          return Number(x.value)
+          if(x.type === "IntegerConstant" || x.type === "FloatConstant" || x.type === "MemoryAddress") {
+            return Number(x.value);
+          } else {
+            return Number(x.index);
+          } 
         }));
 
         // Clone module repository memory after function call
@@ -255,10 +278,11 @@ export const InstructionEvaluator: {
         return finalRuntime;
       } else {
         const res : unknown = func.jsFunction.apply(encapsulatingModule, parameters.map(x => {
-          if(x.type !== "IntegerConstant" && x.type !== "FloatConstant") {
-            throw new Error("Error");
-          }
-          return Number(x.value);
+          if(x.type === "IntegerConstant" || x.type === "FloatConstant" || x.type === "MemoryAddress") {
+            return Number(x.value);
+          } else {
+            return Number(x.index);
+          } 
         }));
 
         // Clone module repository memory after function call
