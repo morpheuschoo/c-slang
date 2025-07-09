@@ -22,15 +22,12 @@ export function performConstantAndAddressBinaryOperation(
   let cLeft = left;
   let cRight = right;
   let addressReturn: boolean = false;
-  let addressDataType: ScalarCDataType | undefined;
 
   if (Stash.isMemoryAddress(cLeft)) {
-    addressDataType = cLeft.dataType;
     cLeft = convertMemoryAddressToConstant(cLeft);
     addressReturn = true;
   }
   if (Stash.isMemoryAddress(cRight)) {
-    addressDataType = cRight.dataType;
     cRight = convertMemoryAddressToConstant(cRight);
     addressReturn = true;
   }
@@ -57,8 +54,8 @@ export function performConstantAndAddressBinaryOperation(
       dataType.primaryDataType,
     );
 
-    if (addressReturn && addressDataType) {
-      return createMemoryAddress(valueInt, addressDataType)
+    if (addressReturn) {
+      return createMemoryAddress(valueInt);
     }
 
     return {

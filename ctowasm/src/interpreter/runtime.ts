@@ -12,6 +12,7 @@ import {
   resolveValueToConstantP,
   RuntimeMemoryPair
 } from "~src/interpreter/utils/addressUtils";
+import { ScalarCDataType } from "~src/common/types";
 
 export class Runtime {
   private readonly control: Control;
@@ -111,7 +112,7 @@ export class Runtime {
         type: "MemoryWriteInterface",
         address: pair.address.value,
         value: writeValue,
-        dataType: pair.address.dataType
+        dataType: pair.dataType,
       };
     });
 
@@ -122,8 +123,8 @@ export class Runtime {
     );
   }
 
-  memoryLoad(address: MemoryAddress) {
-    const value = this.memory.load(address);
+  memoryLoad(address: MemoryAddress, dataType: ScalarCDataType) {
+    const value = this.memory.load(address, dataType);
     const [ _, newRuntime ] = this.popValue();
     return newRuntime.pushValue(value);
   }

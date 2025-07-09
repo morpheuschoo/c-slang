@@ -57,7 +57,7 @@ import {
 import { ExpressionStatementP } from "~src/processor/c-ast/statement/expressionStatement";
 import { containsBreakStatement, containsContinueStatement } from "~src/interpreter/utils/jumpStatementChecking";
 import { ControlItem } from "~src/interpreter/utils/control";
-import { convertAddressNodes, createMemoryAddress, MemoryAddress } from "~src/interpreter/utils/addressUtils";
+import { createMemoryAddress } from "~src/interpreter/utils/addressUtils";
 
 export const NodeEvaluator: { 
   [Type in CNodeType]?: (
@@ -231,10 +231,8 @@ export const NodeEvaluator: {
   // ========== MEMORY ==========  
 
   MemoryLoad: (runtime: Runtime, node: MemoryLoad): Runtime => {
-    const addressPush = convertAddressNodes(node.address, node.dataType, true, runtime.getPointers());
-
     return runtime.push([
-      ...addressPush,
+      node.address,
       memoryLoadInstruction(node.dataType),
     ])
   },
@@ -242,49 +240,53 @@ export const NodeEvaluator: {
   FunctionTableIndex: (runtime: Runtime, node: FunctionTableIndex): Runtime => {
     const newRuntime = runtime.pushValue(node);
     return newRuntime;
-    // throw new Error("FunctionTableIndex");
   },
 
   MemoryStore: (runtime: Runtime, node: MemoryStore): Runtime => {
-    // handle target address (where we are storing)
-    const addressPush = convertAddressNodes(node.address, node.dataType, false, runtime.getPointers());
-
-    // handle value
-    // TODO: still needs fixing, needs to handle all expressions
-    let valueToStore: ControlItem = node.value;
-    if (node.value.type === "LocalAddress") {
-      valueToStore = createMemoryAddress(
-        BigInt(runtime.getPointers().basePointer.value) + node.value.offset.value,
-        node.value.dataType,
-      );
-    }
-
     return runtime.push([
-      valueToStore,
-      ...addressPush,
+      node.value,
+      node.address,
       memoryStoreInstruction(node.dataType),
       popInstruction(),
     ])
   },
 
-  MemoryAddress: (runtime: Runtime, node: MemoryAddress): Runtime => {
-    return runtime.pushValue(node);
-  },
-
   LocalAddress: (runtime: Runtime, node: LocalAddress): Runtime => {
-    throw new Error("LocalAddress should not be in Control")
+    return runtime.pushValue(
+      createMemoryAddress(
+        BigInt(runtime.getPointers().basePointer.value) + node.offset.value,
+      )
+    )
   },
 
   DataSegmentAddress: (runtime: Runtime, node: DataSegmentAddress): Runtime => {
-    throw new Error("DataSegmentAddress should not be in Control")
+    return runtime.pushValue(
+      createMemoryAddress(
+        node.offset.value,
+      )
+    )
   },
 
   ReturnObjectAddress: (runtime: Runtime, node: ReturnObjectAddress): Runtime => {
-    throw new Error("ReturnObjectAddress should not be in Control");
+    if (node.subtype === "load") {
+      return runtime.pushValue(
+        createMemoryAddress(
+          BigInt(runtime.getPointers().stackPointer.value) + node.offset.value
+        )
+      )
+    } else {
+      return runtime.pushValue(
+        createMemoryAddress(
+          BigInt(runtime.getPointers().basePointer.value) + node.offset.value
+        )
+      )
+    }
   },
 
   DynamicAddress: (runtime: Runtime, node: DynamicAddress): Runtime => {
-    throw new Error("DynamicAddress should not be in Control")
+    return runtime.pushNode([
+      node.address
+    ])
   },
 
   FunctionCall: (runtime: Runtime, node: FunctionCallP): Runtime => {
@@ -314,22 +316,8 @@ export const NodeEvaluator: {
       funcIndex = temp.functionAddress;
     }
 
-    // Converts the Address Nodes to MemoryAddress
-    const convertedArgs = node.args.flatMap(arg => {
-      if (
-        arg.type === "LocalAddress" || 
-        arg.type === "DataSegmentAddress" || 
-        arg.type === "DynamicAddress" ||
-        arg.type === "FunctionTableIndex" ||
-        arg.type === "ReturnObjectAddress"
-      ) {
-        return convertAddressNodes(arg, arg.dataType, true, runtime.getPointers())
-      }
-      return [arg];
-    })
-
     const newRuntime = runtime.push([
-      ...convertedArgs,
+      ...node.args,
       functionIndexWrapper(),
       funcIndex,
       callInstruction(

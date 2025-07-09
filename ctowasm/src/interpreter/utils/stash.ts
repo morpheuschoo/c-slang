@@ -37,10 +37,10 @@ export class Stash extends Stack<StashItem, Stash> {
           displayValue = `${item.value}`;
           break;
         case "MemoryAddress":
-          displayValue = `MemoryAddress(address: ${item.hexValue}, type: ${item.dataType})`;
+          displayValue = `MemoryAddress (${item.hexValue})`;
           break;
         case "FunctionTableIndex":
-          displayValue = `FunctionTableIndex(${item.index.value})`;
+          displayValue = `FunctionTableIndex (${item.index.value})`;
         default:
           break;
       }
