@@ -31,7 +31,6 @@ export async function compileAndRunFile({
     path.resolve(__dirname, `samples/${testGroup}/${testFileName}.c`),
     "utf-8",
   );
-
   await compileAndRun(input, modulesConfig);
 }
 
@@ -169,7 +168,7 @@ export async function testFileCompilationSuccess(testGroup, testFileName) {
         };
         try {
           // if there is a expectedValues for variables in the file, check that they are equal
-          await interpreteFile({
+          await compileAndRunFile({
             testGroup,
             testFileName,
             modulesConfig,

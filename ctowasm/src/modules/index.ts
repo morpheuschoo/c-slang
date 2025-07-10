@@ -53,7 +53,7 @@ export default class ModuleRepository {
       functionTable ??
       new WebAssembly.Table({ element: "anyfunc", initial: 0 });
     this.config = config
-      ? { ...defaultModulesGlobalConfig, ...config }
+      ? { ...config }
       : defaultModulesGlobalConfig;
 
     this.sharedWasmGlobalVariables = {
