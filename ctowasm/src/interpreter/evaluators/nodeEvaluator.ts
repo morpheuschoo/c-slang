@@ -346,8 +346,8 @@ export const NodeEvaluator: {
 
     const newRuntime = runtime.push([
       ...node.args,
-      functionIndexWrapper(),
       funcIndex,
+      functionIndexWrapper(),
       callInstruction(
         node.calledFunction,
         node.functionDetails

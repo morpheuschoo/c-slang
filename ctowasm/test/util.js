@@ -2,7 +2,7 @@
  * Utilty to help run tests.
  */
 
-import { compileToWat, compileAndRun } from "../dist/index.js";
+import { compileToWat, compileAndRun, interpret_C_AST } from "../dist/index.js";
 import * as fs from "fs";
 import * as path from "path";
 import testLog from "./testLog.js";
@@ -31,8 +31,20 @@ export async function compileAndRunFile({
     path.resolve(__dirname, `samples/${testGroup}/${testFileName}.c`),
     "utf-8",
   );
-
   await compileAndRun(input, modulesConfig);
+}
+
+export async function interpreteFile({
+  testGroup,
+  testFileName,
+  modulesConfig,
+}) {
+  const input = fs.readFileSync(
+    path.resolve(__dirname, `samples/${testGroup}/${testFileName}.c`),
+    "utf-8",
+  );
+
+  await interpret_C_AST(input, modulesConfig)
 }
 
 class CompilationFailure extends Error {

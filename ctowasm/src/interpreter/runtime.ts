@@ -42,6 +42,10 @@ export class Runtime {
     }
   }
 
+  log() {
+    console.log(this.control, this.stash);
+  }
+
   next(): Runtime {
     if (this.hasCompleted()) {
       return new Runtime(this.control, this.stash, this.memory);

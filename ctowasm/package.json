@@ -56,7 +56,7 @@
     "gen-c-ast": "yarn build && node cmd.js generate-c-ast",
     "gen-p-c-ast": "yarn build && node cmd.js generate-processed-c-ast",
     "gen-wat-ast": "yarn build && node cmd.js generate-wat-ast",
-    "test": "yarn build && cross-env NODE_OPTIONS=--experimental-vm-modules jest",
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
     "unit-test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --testPathPattern=unit_tests",
     "check": "tsc --noEmit",
     "clean-dist": "rimraf dist",
@@ -68,6 +68,7 @@
   },
   "dependencies": {
     "bignumber.js": "^9.1.2",
+    "fs": "^0.0.1-security",
     "wabt": "^1.0.32"
   }
 }

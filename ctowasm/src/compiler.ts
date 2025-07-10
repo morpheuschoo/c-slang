@@ -12,7 +12,7 @@ import {
   generateCompilationWarningMessage,
   toJson,
 } from "~src/errors";
-import ModuleRepository, { ModuleName } from "~src/modules";
+import ModuleRepository, { ModuleName, ModulesGlobalConfig } from "~src/modules";
 import { interpret } from "~src/interpreter/index";
 
 export interface SuccessfulCompilationResult {
@@ -49,7 +49,7 @@ export async function compile(
         generateCompilationWarningMessage(w.message, cSourceCode, w.position),
       ),
     );
-    interpret(astRootNode, includedModules);
+    // interpret(astRootNode, cAstRoot.includedModules, moduleRepository.config); // here
 
     const wasmModule = translate(astRootNode, moduleRepository);
     const output = await compileWatToWasm(generateWat(wasmModule));
@@ -177,8 +177,9 @@ export function generate_WAT_AST(
 export function interpret_C_AST(
   cSourceCode: string,
   moduleRepository: ModuleRepository,
+  moduleConfig: ModulesGlobalConfig
 ) {
   const { cAstRoot } = parse(cSourceCode, moduleRepository);
   const { astRootNode } = process(cAstRoot, moduleRepository);
-  // interpret(astRootNode);
+  interpret(astRootNode, cAstRoot.includedModules, moduleConfig);
 }

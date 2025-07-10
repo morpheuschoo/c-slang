@@ -25,8 +25,8 @@ export function generate_WAT_AST(program: string) {
   return originalGenerate_WAT_AST(program, defaultModuleRepository);
 }
 
-export function interpret_C_AST(program: string) {
-  return original_interpter_C_AST(program, defaultModuleRepository);
+export function interpret_C_AST(program: string, modulesConfig: ModulesGlobalConfig) {
+  return original_interpter_C_AST(program, defaultModuleRepository, modulesConfig);
 }
 
 export async function compile(program: string): Promise<CompilationResult> {

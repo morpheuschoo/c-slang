@@ -3,8 +3,8 @@ import {
   COMPILATION_SUCCESS,
   testFileCompilationError,
   testFileCompilationSuccess,
-} from "./util";
-import testLog from "./testLog";
+} from "./util.js";
+import testLog from "./testLog.js";
 
 function checkSubstrsPresent(errorMessage, substrings) {
   for (const str of substrings) {
