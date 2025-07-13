@@ -56,7 +56,7 @@
     "gen-c-ast": "yarn build && node cmd.js generate-c-ast",
     "gen-p-c-ast": "yarn build && node cmd.js generate-processed-c-ast",
     "gen-wat-ast": "yarn build && node cmd.js generate-wat-ast",
-    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
+    "test": "yarn build && cross-env NODE_OPTIONS=--experimental-vm-modules jest",
     "unit-test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --testPathPattern=unit_tests",
     "check": "tsc --noEmit",
     "clean-dist": "rimraf dist",

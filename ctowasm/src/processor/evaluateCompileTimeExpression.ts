@@ -28,6 +28,8 @@ export function performBinaryOperation(
   operator: BinaryOperator,
   b: any,
 ) {
+  const isNonZero = (x: any) => typeof x === "bigint" ? x !== 0n : x !== 0;
+
   switch (operator) {
     // arithmetic operators
     case "+":
@@ -42,9 +44,9 @@ export function performBinaryOperation(
       return a % b;
     // logical operators
     case "&&":
-      return a !== 0 && b !== 0 ? 1 : 0;
+      return isNonZero(a) && isNonZero(b) ? 1 : 0;
     case "||":
-      return a !== 0 || b !== 0 ? 1 : 0;
+      return isNonZero(a) || isNonZero(b) ? 1 : 0;
     // relational operator
     case "<":
       return a < b ? 1 : 0;

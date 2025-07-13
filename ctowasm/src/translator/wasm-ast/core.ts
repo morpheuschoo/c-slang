@@ -40,6 +40,7 @@ import {
   WasmLocalSet,
 } from "~src/translator/wasm-ast/variables";
 import { WasmFunctionTable } from "~src/translator/wasm-ast/functionTable";
+import { WasmNop } from "./nop";
 
 /**
  * Main file containing all the core wasm AST node definitions.
@@ -75,7 +76,8 @@ export type WasmStatement =
   | WasmMemoryGrow
   | WasmRegularFunctionCall
   | WasmFunctionCall
-  | WasmIndirectFunctionCall;
+  | WasmIndirectFunctionCall
+  | WasmNop;
 
 /**
  * Wasm Expressions which consist of 1 instruction pushing 1 wasm value to the stack.

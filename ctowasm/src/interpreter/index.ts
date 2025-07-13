@@ -5,9 +5,9 @@ import { ModuleName, ModulesGlobalConfig } from "~src/modules";
 
 export function interpret(astRootNode: CAstRootP, includedModules: ModuleName[], moduleConfig: ModulesGlobalConfig): void {
   
-  console.log("=== AST ===")
-  console.log(toJson(astRootNode));
-  console.log();
+  // console.log("=== AST ===")
+  // console.log(toJson(astRootNode));
+  // console.log();
 
   const interpreter = new Interpreter(astRootNode, includedModules, moduleConfig);
   interpreter.interpret();
