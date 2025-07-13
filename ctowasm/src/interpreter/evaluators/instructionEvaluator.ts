@@ -198,16 +198,6 @@ export const InstructionEvaluator: {
     }
     
     const calledFunction = Runtime.astRootP.functionTable[Number(functionAddress.index.value)];
-    
-    // if(calledFunction.functionName === "print_int") {
-    //   const temp = parameters[0];
-    //   if(temp.type !== "IntegerConstant") {
-    //     throw new Error("Error");
-    //   }
-
-    //   console.log("PRINTED VALUE: ", temp.value);
-    //   return poppedRuntime;
-    // }
 
     if(Runtime.astRootP.functions.find(x => x.name === calledFunction.functionName)) {
       const func = Runtime.astRootP.functions.find(x => x.name === calledFunction.functionName);

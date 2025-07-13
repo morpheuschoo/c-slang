@@ -56,8 +56,6 @@ export class Memory {
 
     this.memory = new WebAssembly.Memory({ initial: initialPages });
 
-    // this.setPointers(WASM_PAGE_IN_HEX * initialPages, 0, dataSegmentSizeInBytes + 4);
-
     this.sharedWasmGlobalVariables = {
       
       /**
@@ -279,12 +277,14 @@ export class Memory {
         dataType: dataType as IntegerDataType
       }
     } else if(isFloatType(dataType)) {
-      let view = new Uint8Array(this.memory.buffer);
-      const raw = view.slice(Number(address), Number(address) + size)
-      const floatValue = dataType === "float" 
-        ? new Float32Array(raw.buffer, raw.byteOffset)[0] 
-        : new Float64Array(raw.buffer, raw.byteOffset)[0];
-      
+      const buffer = this.memory.buffer;
+      const offset = Number(address.value);
+      let floatValue;
+      if (dataType === "float") {
+        floatValue = new DataView(buffer).getFloat32(offset, true);
+      } else {
+        floatValue = new DataView(buffer).getFloat64(offset, true);
+      }
       return {
         type: "FloatConstant",
         value: floatValue,

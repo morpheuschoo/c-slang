@@ -64,11 +64,11 @@ export class Interpreter {
     
     let currentRuntime = initialRuntime;
     
-    console.log(currentRuntime.toString());
+    // console.log(currentRuntime.toString());
 
     while (!currentRuntime.hasCompleted()) {
       currentRuntime = currentRuntime.next();
-      console.log(currentRuntime.toString());
+      // console.log(currentRuntime.toString());
       this.runtimeStack.push(currentRuntime);
     }
   }

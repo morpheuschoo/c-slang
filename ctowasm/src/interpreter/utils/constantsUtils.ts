@@ -11,8 +11,6 @@ import { Stash } from "~src/interpreter/utils/stash";
  * Bottom evaluation is same as in ~src\processor\evaluateCompileTimeExpression.ts.
  * However, it has been fixed.
  * Adapted for the addition of MemoryAddress
- * 
- * TODO: I think for bitwise operators we need to test it
  */
 export function performConstantAndAddressBinaryOperation(
   left: ConstantP | MemoryAddress,
@@ -32,12 +30,6 @@ export function performConstantAndAddressBinaryOperation(
     addressReturn = true;
   }
   
-  let value = performBinaryOperation(
-    Number(cLeft.value),
-    operator,
-    Number(cRight.value),
-  );
-
   const dataType = determineResultDataTypeOfBinaryExpression(
     { type: "primary", primaryDataType: cLeft.dataType },
     { type: "primary", primaryDataType: cRight.dataType },
@@ -48,9 +40,36 @@ export function performConstantAndAddressBinaryOperation(
     throw new Error("invalid expression")
   };
 
+  let leftVal: bigint | number;
+  let rightVal: bigint | number;
+  
+  /**
+   * there is a need to ensure that both leftVal and rightVal are same types (both bigint or number)
+   * so that performBinaryOperation will give a result as intended
+   * 
+   * only for unsigned long and signed long we convert them into BigInt so that we get the full 64-bit range
+   * this ensures that the calculations with longs produce the correct value and do not overflow
+   * 
+   * for int, float and double we convert them to number so it adheres to the 32-bit range
+   * this ensures that for bitwise operators, they give the correct wrong value
+   */
+  if (dataType.primaryDataType === "unsigned long" || dataType.primaryDataType === "signed long") {
+    leftVal = BigInt(cLeft.value);
+    rightVal = BigInt(cRight.value);
+  } else {
+    leftVal = Number(cLeft.value);
+    rightVal = Number(cRight.value);
+  }
+
+  let value = performBinaryOperation(
+    leftVal,
+    operator,
+    rightVal,
+  );
+
   if (isIntegerType(dataType.primaryDataType)) {
     const valueInt = getAdjustedIntValueAccordingToDataType(
-      BigInt(Math.floor(value)),
+      typeof value === "bigint" ? value : BigInt(Math.floor(value)),
       dataType.primaryDataType,
     );
 
