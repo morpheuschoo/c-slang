@@ -20,6 +20,58 @@ export class Interpreter {
     this.moduleConfig = moduleConfig;
   }
 
+  async interpretTillStep(targetStep: number): Promise<void> {
+    Runtime.astRootP = this.astRootNode;
+    Runtime.includedModules = this.includedModules;
+
+    const mainFunction = Runtime.astRootP.functions.find(x => x.name === "main");
+    
+    if(!mainFunction) {
+      throw new Error("Main function not defined");
+    }
+
+    // call main
+    const initialRuntime = new Runtime(new Control([{
+      type: "FunctionCall",
+      calledFunction: {
+        type: "DirectlyCalledFunction",
+        functionName: "main"
+      },
+      functionDetails: {
+        sizeOfParams: 0,
+        sizeOfReturn: 4,
+        parameters: [],
+        returnObjects: [{
+          dataType: "signed int",
+          offset: 0
+        }]
+      },
+      args: [],
+    }]))
+    
+    Runtime.modules = new ModuleRepository(
+      initialRuntime.cloneMemory().memory, 
+      new WebAssembly.Table({ element: "anyfunc", initial: 100 }), 
+      this.moduleConfig
+    );
+
+    for(const moduleName of Runtime.includedModules) {
+      if (typeof Runtime.modules.modules[moduleName].instantiate !== "undefined") {
+        await (Runtime.modules.modules[moduleName].instantiate as () => Promise<void>)();
+      }
+    }
+    this.runtimeStack.push(initialRuntime);
+    
+    let currentRuntime = initialRuntime;
+
+    let currStep: number = 0;
+    while (currStep !== targetStep) {
+      currentRuntime = currentRuntime.next();
+      this.runtimeStack.push(currentRuntime);
+      currStep++;
+    }
+  }
+
   async interpret(): Promise<void> {
     Runtime.astRootP = this.astRootNode;
     Runtime.includedModules = this.includedModules;

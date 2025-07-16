@@ -13,3 +13,13 @@ export function interpret(astRootNode: CAstRootP, includedModules: ModuleName[],
   interpreter.interpret();
   // console.log(interpreter.toString());
 }
+
+export function evaluateTillStep(
+  astRootNode: CAstRootP,
+  includedModules: ModuleName[],
+  moduleConfig: ModulesGlobalConfig,
+  targetStep: number
+) {
+  const interpreter = new Interpreter(astRootNode, includedModules, moduleConfig);
+  interpreter.interpretTillStep(targetStep);
+}

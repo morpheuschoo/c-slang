@@ -13,7 +13,7 @@ import {
   toJson,
 } from "~src/errors";
 import ModuleRepository, { ModuleName, ModulesGlobalConfig } from "~src/modules";
-import { interpret } from "~src/interpreter/index";
+import { interpret, evaluateTillStep } from "~src/interpreter/index";
 
 export interface SuccessfulCompilationResult {
   status: "success";
@@ -49,7 +49,8 @@ export async function compile(
         generateCompilationWarningMessage(w.message, cSourceCode, w.position),
       ),
     );
-    // interpret(astRootNode, cAstRoot.includedModules, moduleRepository.config); // here
+    
+    interpret(astRootNode, cAstRoot.includedModules, moduleRepository.config); // here
 
     const wasmModule = translate(astRootNode, moduleRepository);
     const output = await compileWatToWasm(generateWat(wasmModule));
@@ -61,6 +62,51 @@ export async function compile(
       importedModules: includedModules,
       warnings,
     };
+  } catch (e) {
+    if (e instanceof SourceCodeError) {
+      return {
+        status: "failure",
+        errorMessage: e.generateCompilationErrorMessage(cSourceCode),
+      };
+    }
+    if (e instanceof ParserCompilationErrors) {
+      return {
+        status: "failure",
+        errorMessage: e.message,
+      };
+    }
+    throw e;
+  }
+}
+
+export async function evaluate(
+  cSourceCode: string,
+  moduleRepository: ModuleRepository,
+  targetStep: number,
+) {
+  try {
+    const { cAstRoot, warnings } = parse(cSourceCode, moduleRepository);
+    const {
+      astRootNode,
+      includedModules,
+      warnings: processorWarnings,
+    } = process(cAstRoot, moduleRepository);
+    warnings.push(
+      ...processorWarnings.map((w) =>
+        generateCompilationWarningMessage(w.message, cSourceCode, w.position),
+      ),
+    );
+    
+    evaluateTillStep(astRootNode, cAstRoot.includedModules, moduleRepository.config, targetStep);
+
+    // return {
+    //   status: "success",
+    //   wasm: output,
+    //   dataSegmentSize: wasmModule.dataSegmentSize,
+    //   functionTableSize: wasmModule.functionTable.size,
+    //   importedModules: includedModules,
+    //   warnings,
+    // };
   } catch (e) {
     if (e instanceof SourceCodeError) {
       return {

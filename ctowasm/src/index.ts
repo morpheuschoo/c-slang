@@ -9,6 +9,7 @@ import {
   generate_WAT_AST as originalGenerate_WAT_AST,
   generate_processed_C_AST as original_generate_processed_C_AST,
   interpret_C_AST as original_interpter_C_AST,
+  evaluate as originalEvaluate,
   WatCompilationResult,
   CompilationResult,
 } from "./compiler";
@@ -27,6 +28,15 @@ export function generate_WAT_AST(program: string) {
 
 export function interpret_C_AST(program: string, modulesConfig: ModulesGlobalConfig) {
   return original_interpter_C_AST(program, defaultModuleRepository, modulesConfig);
+}
+
+export async function evaluate(
+  program: string, 
+  modulesConfig : ModulesGlobalConfig,
+  targetStep: number,
+) {
+  console.log(targetStep);
+  originalEvaluate(program, defaultModuleRepository, targetStep);
 }
 
 export async function compile(program: string): Promise<CompilationResult> {
