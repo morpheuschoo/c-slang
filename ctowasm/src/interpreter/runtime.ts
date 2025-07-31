@@ -42,10 +42,6 @@ export class Runtime {
     }
   }
 
-  log() {
-    console.log(this.control, this.stash);
-  }
-
   next(): Runtime {
     if (this.hasCompleted()) {
       return new Runtime(this.control, this.stash, this.memory);
@@ -250,6 +246,10 @@ export class Runtime {
     return [popedItem, newRuntime];
   }
 
+  isControlEmpty(): boolean {
+    return this.control.isEmpty();
+  }
+
   toString(): string {
     let result = "\n----- INTERPRETER STATE -----\n";
     
@@ -274,7 +274,15 @@ export class Runtime {
     return result;
   }
 
-  isControlEmpty(): boolean {
-    return this.control.isEmpty();
+  public getControl(): Control {
+    return this.control;
+  }
+
+  public getStash(): Stash {
+    return this.stash;
+  }
+
+  public getMemory(): Memory {
+    return this.memory;
   }
 }

@@ -1,5 +1,5 @@
 import { CAstRootP } from "~src/processor/c-ast/core";
-import { Interpreter } from "~src/interpreter/interpret";
+import { CContext, Interpreter } from "~src/interpreter/interpret";
 import { toJson } from "~src/errors";
 import { ModuleName, ModulesGlobalConfig } from "~src/modules";
 
@@ -14,12 +14,12 @@ export function interpret(astRootNode: CAstRootP, includedModules: ModuleName[],
   // console.log(interpreter.toString());
 }
 
-export function evaluateTillStep(
+export async function evaluateTillStep(
   astRootNode: CAstRootP,
   includedModules: ModuleName[],
   moduleConfig: ModulesGlobalConfig,
   targetStep: number
-) {
+): Promise<CContext> {
   const interpreter = new Interpreter(astRootNode, includedModules, moduleConfig);
-  interpreter.interpretTillStep(targetStep);
+  return await interpreter.interpretTillStep(targetStep);
 }

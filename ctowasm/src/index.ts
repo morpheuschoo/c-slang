@@ -12,6 +12,7 @@ import {
   evaluate as originalEvaluate,
   WatCompilationResult,
   CompilationResult,
+  EvaluationResult,
 } from "./compiler";
 import { calculateNumberOfPagesNeededForBytes } from "~src/common/utils";
 import { WASM_PAGE_SIZE } from "~src/translator/memoryUtil";
@@ -32,11 +33,10 @@ export function interpret_C_AST(program: string, modulesConfig: ModulesGlobalCon
 
 export async function evaluate(
   program: string, 
-  modulesConfig : ModulesGlobalConfig,
+  modulesConfig: ModulesGlobalConfig,
   targetStep: number,
-) {
-  console.log(targetStep);
-  originalEvaluate(program, defaultModuleRepository, targetStep);
+): Promise<EvaluationResult> {
+  return await originalEvaluate(program, defaultModuleRepository, targetStep);
 }
 
 export async function compile(program: string): Promise<CompilationResult> {

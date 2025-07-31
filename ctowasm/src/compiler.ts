@@ -14,6 +14,7 @@ import {
 } from "~src/errors";
 import ModuleRepository, { ModuleName, ModulesGlobalConfig } from "~src/modules";
 import { interpret, evaluateTillStep } from "~src/interpreter/index";
+import { CContext } from "~src/interpreter/interpret";
 
 export interface SuccessfulCompilationResult {
   status: "success";
@@ -33,6 +34,21 @@ export type CompilationResult =
   | SuccessfulCompilationResult
   | FailedCompilationResult;
 
+export interface SuccessfulEvaluationResult {
+  status: "success";
+  context: CContext;
+  importedModules: ModuleName[];
+}
+
+interface FailedEvaluationResult {
+  status: "failure";
+  errorMessage: string;
+}
+
+export type EvaluationResult =
+  | SuccessfulEvaluationResult
+  | FailedEvaluationResult;
+
 export async function compile(
   cSourceCode: string,
   moduleRepository: ModuleRepository,
@@ -50,7 +66,7 @@ export async function compile(
       ),
     );
     
-    interpret(astRootNode, cAstRoot.includedModules, moduleRepository.config); // here
+    // interpret(astRootNode, cAstRoot.includedModules, moduleRepository.config); // here
 
     const wasmModule = translate(astRootNode, moduleRepository);
     const output = await compileWatToWasm(generateWat(wasmModule));
@@ -83,7 +99,7 @@ export async function evaluate(
   cSourceCode: string,
   moduleRepository: ModuleRepository,
   targetStep: number,
-) {
+): Promise<EvaluationResult> {
   try {
     const { cAstRoot, warnings } = parse(cSourceCode, moduleRepository);
     const {
@@ -97,16 +113,13 @@ export async function evaluate(
       ),
     );
     
-    evaluateTillStep(astRootNode, cAstRoot.includedModules, moduleRepository.config, targetStep);
+    const outputContext = await evaluateTillStep(astRootNode, cAstRoot.includedModules, moduleRepository.config, targetStep);
 
-    // return {
-    //   status: "success",
-    //   wasm: output,
-    //   dataSegmentSize: wasmModule.dataSegmentSize,
-    //   functionTableSize: wasmModule.functionTable.size,
-    //   importedModules: includedModules,
-    //   warnings,
-    // };
+    return {
+      status: "success",
+      context: outputContext,
+      importedModules: includedModules,
+    };
   } catch (e) {
     if (e instanceof SourceCodeError) {
       return {

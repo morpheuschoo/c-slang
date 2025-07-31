@@ -1,7 +1,16 @@
 import { CAstRootP } from "~src/processor/c-ast/core";
 import { Runtime } from "~src/interpreter/runtime";
-import { Control } from "./utils/control";
+import { Control } from "~src/interpreter/utils/control";
+import { Stash } from "~src/interpreter/utils/stash";
+import { Memory } from "~src/interpreter/memory";
 import ModuleRepository, { ModuleName, ModulesGlobalConfig } from "~src/modules";
+
+export interface CContext {
+  control: Control;
+  stash: Stash;
+  memory: Memory;
+  step: number;
+}
 
 export class Interpreter {
   private readonly runtimeStack: Runtime[];
@@ -15,12 +24,12 @@ export class Interpreter {
     moduleConfig: ModulesGlobalConfig
   ) {
     this.astRootNode = astRootNode;
-    this.runtimeStack = [];
+    this.runtimeStack = []; // CURRENTLY NOT USED WITH HOW INTERPRETER IS SETUP
     this.includedModules = includedModules;
     this.moduleConfig = moduleConfig;
   }
 
-  async interpretTillStep(targetStep: number): Promise<void> {
+  async interpretTillStep(targetStep: number): Promise<CContext> {
     Runtime.astRootP = this.astRootNode;
     Runtime.includedModules = this.includedModules;
 
@@ -65,10 +74,25 @@ export class Interpreter {
     let currentRuntime = initialRuntime;
 
     let currStep: number = 0;
-    while (currStep !== targetStep) {
-      currentRuntime = currentRuntime.next();
-      this.runtimeStack.push(currentRuntime);
-      currStep++;
+    if (targetStep === -1) {
+      while (!currentRuntime.isControlEmpty()) {
+        currentRuntime = currentRuntime.next();
+        this.runtimeStack.push(currentRuntime);
+        currStep++;
+      }
+    } else {
+      while (currStep !== targetStep) {
+        currentRuntime = currentRuntime.next();
+        this.runtimeStack.push(currentRuntime);
+        currStep++;
+      }
+    }
+
+    return {
+      control: currentRuntime.getControl(),
+      stash: currentRuntime.getStash(),
+      memory: currentRuntime.getMemory(),
+      step: currStep,
     }
   }
 
