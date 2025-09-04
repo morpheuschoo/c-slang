@@ -51,6 +51,7 @@ import { ENUM_DATA_TYPE, POINTER_TYPE } from "~src/common/constants";
 import processEnumDeclaration from "~src/processor/processEnumDeclaration";
 import { ExpressionWrapperP } from "~src/processor/c-ast/expression/expressions";
 import { Expression } from "~src/parser/c-ast/core";
+import { memoryManager } from "~src/processor/memoryManager";
 
 /**
  * Processes a Declaration node that is found within a function.
@@ -63,6 +64,17 @@ export function processLocalDeclaration(
 ): StatementP[] {
   if (declaration.type === "Declaration") {
     let symbolEntry = symbolTable.addEntry(declaration);
+    
+    if (symbolEntry.type !== "function") {
+      const varEntry = symbolEntry as VariableSymbolEntry;
+      memoryManager.getAddressMap().addVariable(declaration.name, {
+        name: declaration.name,
+        offset: varEntry.offset,
+        isGlobal: varEntry.type === "dataSegmentVariable",
+        size: getDataTypeSize(declaration.dataType)
+      });
+    }
+
     if (
       symbolEntry.type === "function" &&
       typeof declaration.initializer !== "undefined"

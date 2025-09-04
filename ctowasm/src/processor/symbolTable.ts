@@ -1,3 +1,4 @@
+import { memoryManager } from "~src/processor/memoryManager";
 import { ENUM_DATA_TYPE } from "~src/common/constants";
 import { DataType, FunctionDataType } from "../parser/c-ast/dataTypes";
 import { ProcessingError, toJson } from "~src/errors";
@@ -59,6 +60,7 @@ export class SymbolTable {
   functionTableIndexes: Record<string, number>; // map function name to index in functionTable for fast lookup
   symbols: Record<string, SymbolEntry>;
   externalFunctions: Record<string, FunctionSymbolEntry>;
+  currentFunctionName: string = "";
 
   constructor(parentTable?: SymbolTable | null) {
     this.symbols = {};
@@ -235,6 +237,15 @@ export class SymbolTable {
       }
     }
     this.symbols[name] = entry;
+
+    const varEntry = entry as VariableSymbolEntry;
+    memoryManager.getAddressMap().addVariable(name, {
+      name,
+      offset: varEntry.offset,
+      isGlobal: varEntry.type === "dataSegmentVariable",
+      size: getDataTypeSize(dataType)
+    });
+
     return entry;
   }
 
@@ -321,5 +332,15 @@ export class SymbolTable {
    */
   setFunctionIsDefinedFlag(functionName: string) {
     this.functionTable[this.getFunctionIndex(functionName)].isDefined = true;
+  }
+
+  enterFunctionScope(functionName: string): void {
+    this.currentFunctionName = functionName;
+    memoryManager.enterScope(functionName);
+  }
+
+  exitFunctionScope(): void {
+    this.currentFunctionName = "";
+    memoryManager.exitScope();
   }
 }

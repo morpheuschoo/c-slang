@@ -27,6 +27,7 @@ import {
 } from "~src/processor/dataTypeUtil";
 import { DataType, FunctionDataType } from "~src/parser/c-ast/dataTypes";
 import { ExpressionWrapperP } from "~src/processor/c-ast/expression/expressions";
+import { memoryManager } from "~src/processor/memoryManager";
 
 export default function processFunctionDefinition(
   node: FunctionDefinition,
@@ -39,6 +40,8 @@ export default function processFunctionDefinition(
   }
 
   const funcSymbolTable = new SymbolTable(symbolTable);
+
+  memoryManager.enterScope(node.name);
 
   // add all the params to the symbol table
   for (let i = 0; i < node.parameterNames.length; ++i) {
@@ -64,6 +67,9 @@ export default function processFunctionDefinition(
     functionDefinitionNode,
   );
   functionDefinitionNode.body = body; // body is a Block, an array of StatementP will be returned
+
+  memoryManager.exitScope();
+
   return functionDefinitionNode;
 }
 
