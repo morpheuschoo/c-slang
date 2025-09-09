@@ -1,6 +1,6 @@
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { Stack } from "./stack";
-import { MemoryAddress } from '~src/interpreter/utils/addressUtils'
+import { MemoryAddress } from "~src/interpreter/utils/addressUtils";
 import { FunctionTableIndex } from "~src/processor/c-ast/memory";
 
 export type StashItem = ConstantP | MemoryAddress | FunctionTableIndex;
@@ -15,14 +15,14 @@ export class Stash extends Stack<StashItem, Stash> {
   }
 
   static isMemoryAddress(value: StashItem): value is MemoryAddress {
-    return value.type === 'MemoryAddress';
+    return value.type === "MemoryAddress";
   }
 
   toString(): string {
     if (this.isEmpty()) {
       return "  <empty>";
     }
-    
+
     const stashItems = this.toArray();
     let result = "";
 
@@ -30,7 +30,7 @@ export class Stash extends Stack<StashItem, Stash> {
       const item = stashItems[i];
       const itemPosition = stashItems.length - i;
       let displayValue = "";
-      
+
       switch (item.type) {
         case "IntegerConstant":
         case "FloatConstant":

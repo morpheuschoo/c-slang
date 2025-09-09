@@ -41,6 +41,7 @@ export default function process(
     dataSegmentSizeInBytes: 0,
     externalFunctions: [],
     functionTable: [],
+    position: ast.position,
   };
 
   // save the processed details of external functions

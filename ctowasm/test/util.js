@@ -27,10 +27,12 @@ export async function compileAndRunFile({
   testFileName,
   modulesConfig,
 }) {
-  const input = fs.readFileSync(
-    path.resolve(__dirname, `samples/${testGroup}/${testFileName}.c`),
-    "utf-8",
-  ).replace(/\r/g, "");
+  const input = fs
+    .readFileSync(
+      path.resolve(__dirname, `samples/${testGroup}/${testFileName}.c`),
+      "utf-8",
+    )
+    .replace(/\r/g, "");
   await compileAndRun(input, modulesConfig);
 }
 
@@ -39,11 +41,13 @@ export async function interpretFile({
   testFileName,
   modulesConfig,
 }) {
-  const input = fs.readFileSync(
-    path.resolve(__dirname, `samples/${testGroup}/${testFileName}.c`),
-    "utf-8",
-  ).replace(/\r/g, "");
-  await interpret_C_AST(input, modulesConfig)
+  const input = fs
+    .readFileSync(
+      path.resolve(__dirname, `samples/${testGroup}/${testFileName}.c`),
+      "utf-8",
+    )
+    .replace(/\r/g, "");
+  await interpret_C_AST(input, modulesConfig);
 }
 
 class CompilationFailure extends Error {
@@ -57,10 +61,12 @@ export function compileAndSaveFileToWat({ testGroup, testFileName }) {
     TEMP_DIRECTORY,
     `${testGroup}/wat/${testFileName}.wat`,
   );
-  const input = fs.readFileSync(
-    path.resolve(__dirname, `samples/${testGroup}/${testFileName}.c`),
-    "utf-8",
-  ).replace(/\r/g, "");
+  const input = fs
+    .readFileSync(
+      path.resolve(__dirname, `samples/${testGroup}/${testFileName}.c`),
+      "utf-8",
+    )
+    .replace(/\r/g, "");
 
   const { watOutput, status, warnings, errorMessage } = compileToWat(input);
   if (status === "failure") {
@@ -86,10 +92,12 @@ export const COMPILATION_FAILURE_TEST_SUCCESS = true;
  * Helper function to run a test defined by the given information.
  */
 export function testFileCompilationError(testFileName, expectedMessages) {
-  const input = fs.readFileSync(
-    path.resolve(__dirname, `samples/error/${testFileName}.c`),
-    "utf-8",
-  ).replace(/\r/g, "");
+  const input = fs
+    .readFileSync(
+      path.resolve(__dirname, `samples/error/${testFileName}.c`),
+      "utf-8",
+    )
+    .replace(/\r/g, "");
   const { status, errorMessage } = compileToWat(input);
   if (status !== "failure") {
     throw new Error(
@@ -208,7 +216,7 @@ export async function testFileInterpreterSuccess(testGroup, testFileName) {
     testFileName,
   });
 
-  const programOutput = []
+  const programOutput = [];
 
   const modulesConfig = {
     printFunction: (str) => programOutput.push(str), // custom print function, add to the programOutput instead of print to console
@@ -236,6 +244,6 @@ export async function testFileInterpreterSuccess(testGroup, testFileName) {
       return `VALUES OF VARIABLES DO NOT MATCH EXPECTED\nExpected values: ${expectedValues}\nActual values: ${actualValues}`;
     }
   }
-  
+
   return COMPILATION_SUCCESS;
 }

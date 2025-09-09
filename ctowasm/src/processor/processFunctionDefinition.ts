@@ -58,6 +58,7 @@ export default function processFunctionDefinition(
     sizeOfLocals: 0, // will be incremented as body is visited
     body: [],
     dataType: node.dataType,
+    position: node.position,
   };
 
   // visit body
@@ -110,13 +111,16 @@ export function processFunctionReturnStatement(
         subtype: "store",
         offset: createMemoryOffsetIntegerConstant(currOffset),
         dataType: "pointer",
+        position: expr.position,
       },
+      position: expr.position,
     });
     currOffset += getSizeOfScalarDataType(expr.dataType);
   });
 
   statements.push({
     type: "ReturnStatement",
+    position: expr.position,
   });
   return statements;
 }
@@ -143,6 +147,7 @@ export function convertFunctionCallToFunctionCallP(
         calledFunction: {
           type: "DirectlyCalledFunction",
           functionName: node.expr.name,
+          position: node.position,
         },
         functionDetails: symbolEntry.functionDetails,
         args: processFunctionCallArgs(
@@ -150,6 +155,7 @@ export function convertFunctionCallToFunctionCallP(
           symbolEntry.dataType,
           symbolTable,
         ),
+        position: node.position,
       },
       returnType: symbolEntry.dataType.returnType,
     };
@@ -173,10 +179,12 @@ export function convertFunctionCallToFunctionCallP(
       calledFunction: {
         type: "IndirectlyCalledFunction",
         functionAddress: processedCalledExpr.exprs[0],
+        position: processedCalledExpr.exprs[0].position,
       },
       functionDetails:
         convertFunctionDataTypeToFunctionDetails(functionDataType),
       args: processFunctionCallArgs(node.args, functionDataType, symbolTable),
+      position: processedCalledExpr.exprs[0].position,
     },
   };
 }

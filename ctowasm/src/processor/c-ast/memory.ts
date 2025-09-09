@@ -79,7 +79,7 @@ export interface MemoryLoad extends ExpressionPBase {
 }
 
 // Represents the storing of a primary data type object in an address in memory
-export interface MemoryStore {
+export interface MemoryStore extends ExpressionPBase {
   type: "MemoryStore";
   address: Address;
   value: ExpressionP;

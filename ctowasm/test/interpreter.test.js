@@ -1,7 +1,4 @@
-import {
-  COMPILATION_SUCCESS,
-  testFileInterpreterSuccess
-} from "./util.js";
+import { COMPILATION_SUCCESS, testFileInterpreterSuccess } from "./util.js";
 import testLog from "./testLog.js";
 
 function generateSuccessTests(testGroup) {

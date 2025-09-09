@@ -29,17 +29,16 @@ import { PrimaryDataTypeMemoryObjectDetails } from "~src/processor/dataTypeUtil"
 import { ModuleName } from "~src/modules";
 import { FunctionTable } from "~src/processor/symbolTable";
 import { ExpressionStatementP } from "./statement/expressionStatement";
+import { Position } from "~src/parser/c-ast/misc";
 
-export type CNodeP = 
-  | FunctionDefinitionP 
-  | StatementP
-  | ExpressionP;
+export type CNodeP = FunctionDefinitionP | StatementP | ExpressionP;
 
 /**
  * Every processed C AST node should extend this interface.
  */
 export interface CNodePBase {
   type: string;
+  position: Position;
 }
 
 export type StatementP =

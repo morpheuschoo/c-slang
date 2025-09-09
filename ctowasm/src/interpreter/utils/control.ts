@@ -1,6 +1,10 @@
 import { CNodeP } from "~src/processor/c-ast/core";
 import { Stack } from "./stack";
-import { Instruction, InstructionType, isInstruction } from "~src/interpreter/controlItems/instructions";
+import {
+  Instruction,
+  InstructionType,
+  isInstruction,
+} from "~src/interpreter/controlItems/instructions";
 
 export type ControlItem = CNodeP | Instruction;
 
@@ -9,23 +13,48 @@ export class Control extends Stack<ControlItem, Control> {
     return new Control(items);
   }
 
+  private numEnvDependentItems: any;
+
+  canAvoidEnvInstr(): boolean {
+    return true;
+  }
+  getNumEnvDependentItems(): number {
+    return this.numEnvDependentItems;
+  }
+
+  isInstruction(item: any) {
+    return isInstruction(item);
+  }
+
+  isNode(item: any) {
+    return !isInstruction(item);
+  }
+
+  copy(): Control {
+    return new Control();
+  }
+
   toString(): string {
     if (this.isEmpty()) {
       return "  <empty>";
     }
-    
+
     const controlItems = this.toArray();
     let result = "";
 
     for (let i = controlItems.length - 1; i >= 0; i--) {
       const item = controlItems[i];
       const itemPosition = controlItems.length - i;
-      
+
       if (isInstruction(item)) {
         if (item.type === InstructionType.BINARY_OP) {
-          result += `  ${itemPosition}. [Instruction] ${item.type}: '${(item as any).operator}'\n`;
+          result += `  ${itemPosition}. [Instruction] ${item.type}: '${
+            (item as any).operator
+          }'\n`;
         } else if (item.type === InstructionType.UNARY_OP) {
-          result += `  ${itemPosition}. [Instruction] ${item.type}: '${(item as any).operator}'\n`;
+          result += `  ${itemPosition}. [Instruction] ${item.type}: '${
+            (item as any).operator
+          }'\n`;
         } else if (
           item.type === InstructionType.BRANCH ||
           item.type === InstructionType.POP ||
@@ -45,26 +74,29 @@ export class Control extends Stack<ControlItem, Control> {
         ) {
           result += `  ${itemPosition}. [Instruction] ${item.type}: '${item.dataType}'\n`;
         } else {
-          result += `  ${itemPosition}. [Instruction] ${item.type}\n`
+          result += `  ${itemPosition}. [Instruction] ${item.type}\n`;
         }
       } else {
         const nodeItem = item as any;
-        let additionalInfo = '';
-        
+        let additionalInfo = "";
+
         switch (nodeItem.type) {
-          case 'FunctionDefinition':
-            additionalInfo = nodeItem.name ? `: ${nodeItem.name}` : '';
+          case "FunctionDefinition":
+            additionalInfo = nodeItem.name ? `: ${nodeItem.name}` : "";
             break;
-          case 'IntegerConstant':
-          case 'FloatConstant':
-            additionalInfo = nodeItem.value !== undefined ? `: ${nodeItem.value}` : '';
+          case "IntegerConstant":
+          case "FloatConstant":
+            additionalInfo =
+              nodeItem.value !== undefined ? `: ${nodeItem.value}` : "";
             break;
-          case 'UnaryExpression':
-          case 'BinaryExpression':
-            additionalInfo = nodeItem.operator ? `: '${nodeItem.operator}'` : '';
+          case "UnaryExpression":
+          case "BinaryExpression":
+            additionalInfo = nodeItem.operator
+              ? `: '${nodeItem.operator}'`
+              : "";
             break;
-          case 'MemoryAddress':
-            additionalInfo = `: ${nodeItem.hexValue}`;  
+          case "MemoryAddress":
+            additionalInfo = `: ${nodeItem.hexValue}`;
             break;
         }
 
