@@ -1,5 +1,6 @@
 import { BinaryOperator, ScalarCDataType } from "~src/common/types";
 import { DataType } from "~src/parser/c-ast/dataTypes";
+import { Position } from "~src/parser/c-ast/misc";
 import {
   ExpressionP,
   StatementP,

@@ -1,5 +1,6 @@
 import { ScalarCDataType } from "~src/common/types";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
+import { defaultPosition } from "./constantsUtils";
 
 export interface RuntimeMemoryPair {
   type: "RuntimeMemoryPair";
@@ -18,11 +19,13 @@ export function createMemoryAddress(value: bigint): MemoryAddress {
   return {
     type: "MemoryAddress",
     value,
-    hexValue: `0x${value.toString(16).padStart(8, '0')}`,
+    hexValue: `0x${value.toString(16).padStart(8, "0")}`,
   };
 }
 
-export function resolveValueToConstantP(value: MemoryAddress | ConstantP): ConstantP {
+export function resolveValueToConstantP(
+  value: MemoryAddress | ConstantP,
+): ConstantP {
   // if ConstantP return itself
   if (value.type === "IntegerConstant" || value.type === "FloatConstant") {
     return value;
@@ -32,6 +35,7 @@ export function resolveValueToConstantP(value: MemoryAddress | ConstantP): Const
   return {
     type: "IntegerConstant",
     value: value.value,
-    dataType: "unsigned int"
-  }
+    dataType: "unsigned int",
+    position: defaultPosition,
+  };
 }

@@ -255,12 +255,15 @@ export function getArithmeticPrePostfixExpressionNodes(
           type: "IntegerConstant",
           value: amountToIncrementBy,
           dataType: "signed int",
+          position: memoryLoad.position,
         },
         dataType: memoryLoad.dataType,
         operandTargetDataType: memoryLoad.dataType,
         operator: binaryOperator,
+        position: memoryLoad.position,
       },
       dataType: memoryLoad.dataType,
+      position: memoryLoad.position,
     },
   ];
 
@@ -289,6 +292,7 @@ export function processPrefixExpression(
           statements: storeNodes,
           expr: loadNode,
           dataType: loadNode.dataType,
+          position: loadNode.position,
         },
       ],
     };
@@ -354,6 +358,7 @@ export function processPrefixExpression(
             operator: prefixExpression.operator,
             expr: processedExpression.exprs[0],
             dataType: processedExpression.exprs[0].dataType,
+            position: processedExpression.exprs[0].position,
           },
         ],
       };
@@ -375,6 +380,7 @@ export function processPostfixExpression(
         statements: storeNodes,
         expr: loadNode,
         dataType: loadNode.dataType,
+        position: loadNode.position,
       },
     ],
   };

@@ -48,6 +48,18 @@ export function createMemoryOffsetIntegerConstant(
     type: "IntegerConstant",
     dataType: PTRDIFF_T,
     value: BigInt(offset),
+    position: {
+      start: {
+        line: 0,
+        column: 0,
+        offset: 0,
+      },
+      end: {
+        line: 0,
+        column: 0,
+        offset: 0,
+      },
+    },
   };
 }
 
@@ -89,6 +101,18 @@ export function createFunctionTableIndexExpressionWrapper(
         type: "FunctionTableIndex",
         index: createMemoryOffsetIntegerConstant(indexInFunctionTable),
         dataType: "pointer",
+        position: {
+          start: {
+            line: 0,
+            column: 0,
+            offset: 0,
+          },
+          end: {
+            line: 0,
+            column: 0,
+            offset: 0,
+          },
+        },
       },
     ],
   };

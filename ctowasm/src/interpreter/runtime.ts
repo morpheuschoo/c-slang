@@ -1,16 +1,22 @@
 import { ControlItem, Control } from "~src/interpreter/utils/control";
-import { StashItem, Stash} from "~src/interpreter/utils/stash";
+import { StashItem, Stash } from "~src/interpreter/utils/stash";
 import { CAstRootP, CNodeP } from "~src/processor/c-ast/core";
-import { Instruction, isInstruction } from "~src/interpreter/controlItems/instructions";
+import {
+  Instruction,
+  isInstruction,
+} from "~src/interpreter/controlItems/instructions";
 import { NodeEvaluator } from "~src/interpreter/evaluators/nodeEvaluator";
 import { InstructionEvaluator } from "~src/interpreter/evaluators/instructionEvaluator";
 import { FunctionDefinitionP } from "~src/processor/c-ast/function";
 import { Memory, MemoryWriteInterface } from "./memory";
-import ModuleRepository, { ModuleName, SharedWasmGlobalVariables } from "~src/modules";
-import { 
+import ModuleRepository, {
+  ModuleName,
+  SharedWasmGlobalVariables,
+} from "~src/modules";
+import {
   MemoryAddress,
   resolveValueToConstantP,
-  RuntimeMemoryPair
+  RuntimeMemoryPair,
 } from "~src/interpreter/utils/addressUtils";
 import { ScalarCDataType } from "~src/common/types";
 
@@ -18,25 +24,25 @@ export class Runtime {
   private readonly control: Control;
   private readonly stash: Stash;
   private readonly memory: Memory;
-  
+
   public static astRootP: CAstRootP;
   public static includedModules: ModuleName[];
   public static modules: ModuleRepository;
+  public static sourceCode: string;
 
-  constructor(
-    control?: Control,
-    stash?: Stash,
-    memory?: Memory
-  ) {
+  constructor(control?: Control, stash?: Stash, memory?: Memory) {
     this.stash = stash || new Stash();
     this.control = control || new Control();
 
-    if(!memory) {
-      if(!Runtime.astRootP) {
+    if (!memory) {
+      if (!Runtime.astRootP) {
         throw new Error("AST Root node not assigned");
       }
 
-      this.memory = new Memory(Runtime.astRootP.dataSegmentByteStr, Runtime.astRootP.dataSegmentSizeInBytes);
+      this.memory = new Memory(
+        Runtime.astRootP.dataSegmentByteStr,
+        Runtime.astRootP.dataSegmentSizeInBytes,
+      );
     } else {
       this.memory = memory;
     }
@@ -48,11 +54,7 @@ export class Runtime {
     }
 
     const [item, newControl] = this.control.pop();
-    const poppedRuntime = new Runtime(
-      newControl,
-      this.stash,
-      this.memory,
-    );
+    const poppedRuntime = new Runtime(newControl, this.stash, this.memory);
 
     if (isInstruction(item)) {
       return poppedRuntime.evaluateInstruction(item as Instruction);
@@ -60,7 +62,7 @@ export class Runtime {
       return poppedRuntime.evaluateNode(item as CNodeP);
     }
   }
-  
+
   private evaluateNode(node: CNodeP): Runtime {
     const evaluator = NodeEvaluator[node.type];
     if (evaluator) {
@@ -73,15 +75,18 @@ export class Runtime {
 
   private evaluateInstruction(instruction: Instruction): Runtime {
     if (InstructionEvaluator[instruction.type]) {
-      const result = InstructionEvaluator[instruction.type](this, instruction as any);
+      const result = InstructionEvaluator[instruction.type](
+        this,
+        instruction as any,
+      );
       return result;
     } else {
       throw new Error("Unknown instruction type");
     }
   }
-  
+
   getFunction(name: string): FunctionDefinitionP | undefined {
-    return Runtime.astRootP.functions.find(x => x.name === name);
+    return Runtime.astRootP.functions.find((x) => x.name === name);
   }
 
   // ===== MEMORY =====
@@ -93,11 +98,7 @@ export class Runtime {
   cloneModuleMemory(): Runtime {
     const newMemory = this.memory.cloneModuleMemory();
 
-    return new Runtime(
-      this.control,
-      this.stash,
-      newMemory,
-    )
+    return new Runtime(this.control, this.stash, newMemory);
   }
 
   cloneMemory(): Memory {
@@ -105,51 +106,55 @@ export class Runtime {
   }
 
   memoryWrite(pairs: RuntimeMemoryPair[]): Runtime {
-    const memoryWriteInterfaceArr: MemoryWriteInterface[] = pairs.map(pair => {
-      const writeValue = resolveValueToConstantP(pair.value);
+    const memoryWriteInterfaceArr: MemoryWriteInterface[] = pairs.map(
+      (pair) => {
+        const writeValue = resolveValueToConstantP(pair.value);
 
-      return {
-        type: "MemoryWriteInterface",
-        address: pair.address.value,
-        value: writeValue,
-        dataType: pair.dataType,
-      };
-    });
+        return {
+          type: "MemoryWriteInterface",
+          address: pair.address.value,
+          value: writeValue,
+          dataType: pair.dataType,
+        };
+      },
+    );
 
     return new Runtime(
       this.control,
       this.stash,
-      this.memory.write(memoryWriteInterfaceArr)
+      this.memory.write(memoryWriteInterfaceArr),
     );
   }
 
   memoryLoad(address: MemoryAddress, dataType: ScalarCDataType) {
     const value = this.memory.load(address, dataType);
-    const [ _, newRuntime ] = this.popValue();
+    const [_, newRuntime] = this.popValue();
     return newRuntime.pushValue(value);
   }
 
-  stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number, parameters: StashItem[]): Runtime {
-    const newMemory = this.memory.stackFrameSetup(sizeOfParams, sizeOfLocals, sizeOfReturn, parameters);
+  stackFrameSetup(
+    sizeOfParams: number,
+    sizeOfLocals: number,
+    sizeOfReturn: number,
+    parameters: StashItem[],
+  ): Runtime {
+    const newMemory = this.memory.stackFrameSetup(
+      sizeOfParams,
+      sizeOfLocals,
+      sizeOfReturn,
+      parameters,
+    );
 
-    return new Runtime(
-      this.control,
-      this.stash,
-      newMemory
-    )
+    return new Runtime(this.control, this.stash, newMemory);
   }
 
   stackFrameTearDown(stackPointer: number, basePointer: number) {
     const newMemory = this.memory.stackFrameTearDown(stackPointer, basePointer);
 
-    return new Runtime(
-      this.control,
-      this.stash,
-      newMemory
-    )
+    return new Runtime(this.control, this.stash, newMemory);
   }
 
-  getPointers() : SharedWasmGlobalVariables {
+  getPointers(): SharedWasmGlobalVariables {
     return this.memory.sharedWasmGlobalVariables;
   }
 
@@ -162,7 +167,7 @@ export class Runtime {
       this.memory,
     );
   }
-  
+
   pushNode(node: CNodeP[]): Runtime {
     return new Runtime(
       this.control.concat([...node].reverse()),
@@ -170,7 +175,7 @@ export class Runtime {
       this.memory,
     );
   }
-  
+
   pushInstruction(instruction: Instruction[]): Runtime {
     return new Runtime(
       this.control.concat([...instruction].reverse()),
@@ -178,45 +183,27 @@ export class Runtime {
       this.memory,
     );
   }
-  
+
   // STASH FUNCTIONS
 
   pushValue(value: StashItem): Runtime {
-    return new Runtime(
-      this.control,
-      this.stash.push(value),
-      this.memory,
-    );
+    return new Runtime(this.control, this.stash.push(value), this.memory);
   }
-  
+
   popNode(): [ControlItem, Runtime] {
     const [node, newControl] = this.control.pop();
-    if(node === undefined) {
+    if (node === undefined) {
       throw new Error("Undefined popped node");
     }
-    return [
-      node, 
-      new Runtime(
-        newControl,
-        this.stash,
-        this.memory,
-      )
-    ];
+    return [node, new Runtime(newControl, this.stash, this.memory)];
   }
 
   popValue(): [StashItem, Runtime] {
     const [value, newStash] = this.stash.pop();
-    if(value === undefined) {
+    if (value === undefined) {
       throw new Error("Undefined popped stash value");
     }
-    return [
-      value, 
-      new Runtime(
-        this.control,
-        newStash,
-        this.memory,
-      )
-    ];
+    return [value, new Runtime(this.control, newStash, this.memory)];
   }
 
   hasCompleted(): boolean {
@@ -233,13 +220,9 @@ export class Runtime {
 
   popControl(): [ControlItem, Runtime] {
     const [popedItem, newControl] = this.control.pop();
-    const newRuntime = new Runtime(
-      newControl,
-      this.stash,
-      this.memory
-    )
+    const newRuntime = new Runtime(newControl, this.stash, this.memory);
 
-    if(popedItem === undefined) {
+    if (popedItem === undefined) {
       throw new Error("Cannot pop control: no elements left");
     }
 
@@ -252,13 +235,13 @@ export class Runtime {
 
   toString(): string {
     let result = "\n----- INTERPRETER STATE -----\n";
-    
+
     result += "\nCONTROL:\n";
     result += this.control.toString();
-    
+
     result += "\n\nSTASH:\n";
     result += this.stash.toString();
-    
+
     result += "\n\nREGISTERED FUNCTIONS:\n";
     if (Runtime.astRootP.functions.length === 0) {
       result += "  <none>";
@@ -267,7 +250,7 @@ export class Runtime {
         result += `  ${func.name}\n`;
       }
     }
-    
+
     result += "\n-----------------------------";
     result += this.memory.getFormattedMemoryView();
 

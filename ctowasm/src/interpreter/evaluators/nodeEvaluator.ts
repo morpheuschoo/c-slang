@@ -1,85 +1,100 @@
 import { Runtime } from "~src/interpreter/runtime";
-import {  
-  binaryOpInstruction, 
-  branchOpInstruction, 
-  callInstruction, 
-  breakMarkInstruction, 
-  continueMarkInstruction, 
-  createCaseInstructionPair, 
-  createDefaultCaseInstructionPair, 
-  isBreakMarkInstruction, 
-  isContinueMarkInstruction, 
-  memoryLoadInstruction, 
-  memoryStoreInstruction,  
-  popInstruction, 
-  stackFrameTearDownInstruction, 
-  unaryOpInstruction ,
+import {
+  binaryOpInstruction,
+  branchOpInstruction,
+  callInstruction,
+  breakMarkInstruction,
+  continueMarkInstruction,
+  createCaseInstructionPair,
+  createDefaultCaseInstructionPair,
+  isBreakMarkInstruction,
+  isContinueMarkInstruction,
+  memoryLoadInstruction,
+  memoryStoreInstruction,
+  popInstruction,
+  stackFrameTearDownInstruction,
+  unaryOpInstruction,
   whileLoopInstruction,
   functionIndexWrapper,
   forLoopInstruction,
 } from "~src/interpreter/controlItems/instructions";
 import { CNodeType } from "~src/interpreter/controlItems/types";
 import { CNodeP, ExpressionP } from "~src/processor/c-ast/core";
-import { 
-  FloatConstantP, 
-  IntegerConstantP 
+import {
+  FloatConstantP,
+  IntegerConstantP,
 } from "~src/processor/c-ast/expression/constants";
-import { 
-  BinaryExpressionP, 
+import {
+  BinaryExpressionP,
   UnaryExpressionP,
   PreStatementExpressionP,
   PostStatementExpressionP,
   ConditionalExpressionP,
 } from "~src/processor/c-ast/expression/expressions";
-import { 
-  DirectlyCalledFunction, 
-  FunctionCallP, 
+import {
+  DirectlyCalledFunction,
+  FunctionCallP,
 } from "~src/processor/c-ast/function";
-import { 
-  MemoryStore, 
-  MemoryLoad, 
-  LocalAddress, 
-  DataSegmentAddress, 
-  DynamicAddress, 
+import {
+  MemoryStore,
+  MemoryLoad,
+  LocalAddress,
+  DataSegmentAddress,
+  DynamicAddress,
   ReturnObjectAddress,
-  FunctionTableIndex
+  FunctionTableIndex,
 } from "~src/processor/c-ast/memory";
-import { 
-  BreakStatementP, 
-  ContinueStatementP, 
-  ReturnStatementP 
+import {
+  BreakStatementP,
+  ContinueStatementP,
+  ReturnStatementP,
 } from "~src/processor/c-ast/statement/jumpStatement";
-import { SelectionStatementP, SwitchStatementP } from "~src/processor/c-ast/statement/selectionStatement";
-import { 
-  DoWhileLoopP,  
+import {
+  SelectionStatementP,
+  SwitchStatementP,
+} from "~src/processor/c-ast/statement/selectionStatement";
+import {
+  DoWhileLoopP,
   WhileLoopP,
   ForLoopP,
 } from "~src/processor/c-ast/statement/iterationStatement";
 import { ExpressionStatementP } from "~src/processor/c-ast/statement/expressionStatement";
-import { containsBreakStatement, containsContinueStatement } from "~src/interpreter/utils/jumpStatementChecking";
+import {
+  containsBreakStatement,
+  containsContinueStatement,
+} from "~src/interpreter/utils/jumpStatementChecking";
 import { ControlItem } from "~src/interpreter/utils/control";
 import { createMemoryAddress } from "~src/interpreter/utils/addressUtils";
+import { defaultPosition } from "../utils/constantsUtils";
 
-export const NodeEvaluator: { 
+export const NodeEvaluator: {
   [Type in CNodeType]?: (
-    runtime: Runtime, 
-    node: Extract<CNodeP, { type: Type }>) => Runtime 
+    runtime: Runtime,
+    node: Extract<CNodeP, { type: Type }>,
+  ) => Runtime;
 } = {
   // ========== STATEMENTS ==========
 
-  ExpressionStatement: (runtime: Runtime, node: ExpressionStatementP): Runtime => {
+  ExpressionStatement: (
+    runtime: Runtime,
+    node: ExpressionStatementP,
+  ): Runtime => {
     const runtimeWithPop = runtime.pushInstruction([popInstruction()]);
     return runtimeWithPop.pushNode([node.expr]);
   },
 
-  SelectionStatement: (runtime: Runtime, node: SelectionStatementP): Runtime => {
+  SelectionStatement: (
+    runtime: Runtime,
+    node: SelectionStatementP,
+  ): Runtime => {
     const runtimeWithPushedInstruction = runtime.pushInstruction([
       branchOpInstruction(
         node.ifStatements,
         node.elseStatements ?? [],
-      )
-    ])
-    
+        node.position,
+      ),
+    ]);
+
     return runtimeWithPushedInstruction.pushNode([node.condition]);
   },
 
@@ -88,72 +103,81 @@ export const NodeEvaluator: {
   DoWhileLoop: (runtime: Runtime, node: DoWhileLoopP): Runtime => {
     const hasBreak = containsBreakStatement(node.body);
     const hasContinue = containsContinueStatement(node.body);
-    
+
     let pRuntime = runtime;
-    
+
     if (hasBreak) {
       pRuntime = pRuntime.push([breakMarkInstruction()]);
     }
 
     pRuntime = pRuntime.push([
       node.condition,
-      whileLoopInstruction(node.condition, node.body, hasContinue)
+      whileLoopInstruction(
+        node.condition,
+        node.body,
+        hasContinue,
+        node.position,
+      ),
     ]);
 
     if (hasContinue) {
       pRuntime = pRuntime.push([continueMarkInstruction()]);
     }
 
-    return pRuntime.push([...node.body])
+    return pRuntime.push([...node.body]);
   },
 
   WhileLoop: (runtime: Runtime, node: WhileLoopP): Runtime => {
     const hasBreak = containsBreakStatement(node.body);
     const hasContinue = containsContinueStatement(node.body);
-    
+
     let pRuntime = runtime;
-    
+
     if (hasBreak) {
       pRuntime = pRuntime.push([breakMarkInstruction()]);
     }
 
     pRuntime = pRuntime.push([
-      whileLoopInstruction(node.condition, node.body, hasContinue)
+      whileLoopInstruction(
+        node.condition,
+        node.body,
+        hasContinue,
+        node.position,
+      ),
     ]);
-    
+
     return pRuntime.push([node.condition]);
   },
 
   ForLoop: (runtime: Runtime, node: ForLoopP): Runtime => {
     const hasBreak = containsBreakStatement(node.body);
     const hasContinue = containsContinueStatement(node.body);
-    
-    const condition: ExpressionP = node.condition === null
-      ? {
-          type: "IntegerConstant",
-          value: 1n,
-          dataType: "signed int"
-        }
-      : node.condition;
+
+    const condition: ExpressionP =
+      node.condition === null
+        ? {
+            type: "IntegerConstant",
+            value: 1n,
+            dataType: "signed int",
+            position: defaultPosition,
+          }
+        : node.condition;
 
     const forLoopInstr = forLoopInstruction(
       node.body,
       node.update,
       condition,
-      hasContinue
-    )
-    
+      hasContinue,
+      node.position,
+    );
+
     let pRuntime = runtime;
 
     if (hasBreak) {
       pRuntime = pRuntime.push([breakMarkInstruction()]);
     }
 
-    return pRuntime.push([
-      ...node.clause,
-      condition,
-      forLoopInstr
-    ])
+    return pRuntime.push([...node.clause, condition, forLoopInstr]);
   },
 
   // === JUMP STATEMENTS ===
@@ -161,13 +185,17 @@ export const NodeEvaluator: {
   ReturnStatement: (runtime: Runtime, node: ReturnStatementP): Runtime => {
     const topControlItem = runtime.peekControl();
 
-    if(topControlItem.type === "STACKFRAMETEARDOWNINSTRUCTION" || runtime.hasCompleted()) {
+    if (
+      topControlItem.type === "STACKFRAMETEARDOWNINSTRUCTION" ||
+      runtime.hasCompleted()
+    ) {
       return runtime;
     } else {
       const returnStatement: ReturnStatementP = {
-        type: "ReturnStatement"
-      }
-      const [ _ , popedRuntime ] = runtime.popControl();
+        type: "ReturnStatement",
+        position: defaultPosition,
+      };
+      const [_, popedRuntime] = runtime.popControl();
       const newRuntime = popedRuntime.push([returnStatement]);
 
       return newRuntime;
@@ -187,7 +215,7 @@ export const NodeEvaluator: {
         break;
       }
     }
-    
+
     if (!foundBreakMark) {
       throw new Error("Unable to locate break mark");
     }
@@ -208,7 +236,7 @@ export const NodeEvaluator: {
         break;
       }
     }
-    
+
     if (!foundContinueMark) {
       throw new Error("Unable to locate continue mark");
     }
@@ -220,17 +248,18 @@ export const NodeEvaluator: {
    * Followed from: https://stackoverflow.com/questions/68406541/how-cases-get-evaluated-in-switch-statements-c
    */
   SwitchStatement: (runtime: Runtime, node: SwitchStatementP): Runtime => {
-    const hasBreak = containsBreakStatement(
-      [...node.cases.flatMap(c => c.statements), ...node.defaultStatements]
-    )
+    const hasBreak = containsBreakStatement([
+      ...node.cases.flatMap((c) => c.statements),
+      ...node.defaultStatements,
+    ]);
 
-    let conditions: ControlItem[] = [];
-    let statements: ControlItem[] = [];
-    
+    const conditions: ControlItem[] = [];
+    const statements: ControlItem[] = [];
+
     for (let i = 0; i < node.cases.length; i++) {
       const caseItem = node.cases[i];
       const casePair = createCaseInstructionPair(i);
-      
+
       conditions.push(caseItem.condition.rightExpr);
       conditions.push(casePair.jumpInstruction);
 
@@ -238,11 +267,11 @@ export const NodeEvaluator: {
       statements.push(...caseItem.statements);
     }
 
-     if (node.defaultStatements) {
+    if (node.defaultStatements) {
       const defaultPair = createDefaultCaseInstructionPair();
-      
+
       conditions.push(defaultPair.jumpInstruction);
-      
+
       statements.push(defaultPair.markInstruction);
       statements.push(...node.defaultStatements);
     }
@@ -253,16 +282,19 @@ export const NodeEvaluator: {
       updatedRuntime = updatedRuntime.push([breakMarkInstruction()]);
     }
 
-    return updatedRuntime.push(statements).push(conditions).push([node.targetExpression]);
+    return updatedRuntime
+      .push(statements)
+      .push(conditions)
+      .push([node.targetExpression]);
   },
 
-  // ========== MEMORY ==========  
+  // ========== MEMORY ==========
 
   MemoryLoad: (runtime: Runtime, node: MemoryLoad): Runtime => {
     return runtime.push([
       node.address,
-      memoryLoadInstruction(node.dataType),
-    ])
+      memoryLoadInstruction(node.dataType, node.position),
+    ]);
   },
 
   FunctionTableIndex: (runtime: Runtime, node: FunctionTableIndex): Runtime => {
@@ -274,47 +306,44 @@ export const NodeEvaluator: {
     return runtime.push([
       node.value,
       node.address,
-      memoryStoreInstruction(node.dataType),
+      memoryStoreInstruction(node.dataType, defaultPosition),
       popInstruction(),
-    ])
+    ]);
   },
 
   LocalAddress: (runtime: Runtime, node: LocalAddress): Runtime => {
     return runtime.pushValue(
       createMemoryAddress(
         BigInt(runtime.getPointers().basePointer.value) + node.offset.value,
-      )
-    )
+      ),
+    );
   },
 
   DataSegmentAddress: (runtime: Runtime, node: DataSegmentAddress): Runtime => {
-    return runtime.pushValue(
-      createMemoryAddress(
-        node.offset.value,
-      )
-    )
+    return runtime.pushValue(createMemoryAddress(node.offset.value));
   },
 
-  ReturnObjectAddress: (runtime: Runtime, node: ReturnObjectAddress): Runtime => {
+  ReturnObjectAddress: (
+    runtime: Runtime,
+    node: ReturnObjectAddress,
+  ): Runtime => {
     if (node.subtype === "load") {
       return runtime.pushValue(
         createMemoryAddress(
-          BigInt(runtime.getPointers().stackPointer.value) + node.offset.value
-        )
-      )
+          BigInt(runtime.getPointers().stackPointer.value) + node.offset.value,
+        ),
+      );
     } else {
       return runtime.pushValue(
         createMemoryAddress(
-          BigInt(runtime.getPointers().basePointer.value) + node.offset.value
-        )
-      )
+          BigInt(runtime.getPointers().basePointer.value) + node.offset.value,
+        ),
+      );
     }
   },
 
   DynamicAddress: (runtime: Runtime, node: DynamicAddress): Runtime => {
-    return runtime.pushNode([
-      node.address
-    ])
+    return runtime.pushNode([node.address]);
   },
 
   FunctionCall: (runtime: Runtime, node: FunctionCallP): Runtime => {
@@ -322,46 +351,76 @@ export const NodeEvaluator: {
     // arguments
     const pointers = runtime.getPointers();
 
-    let funcIndex : ExpressionP;
-
-    if(node.calledFunction.type === "DirectlyCalledFunction") {
+    if (node.calledFunction.type === "DirectlyCalledFunction") {
       const temp = node.calledFunction;
       temp as DirectlyCalledFunction;
-      const index = Runtime.astRootP.functionTable.findIndex(x => x.functionName === temp.functionName);
+      const index = Runtime.astRootP.functionTable.findIndex(
+        (x) => x.functionName === temp.functionName,
+      );
 
-      if(index === -1) {
+      const funcDetails = Runtime.astRootP.functions.find(
+        (x) => x.name === temp.functionName,
+      );
+
+      if (index === -1) {
         throw new Error(`Function not found: ${temp.functionName}`);
       }
 
-      funcIndex = {
-        type: "IntegerConstant",
-        value: BigInt(index),
-        dataType: "unsigned int"
+      const targetPosition = funcDetails?.position || defaultPosition;
+
+      const funcIndex: FunctionTableIndex = {
+        type: "FunctionTableIndex",
+        index: {
+          type: "IntegerConstant",
+          value: BigInt(index),
+          dataType: "unsigned int",
+          position: targetPosition,
+        },
+        position: targetPosition,
+        dataType: "pointer",
       };
 
+      const newRuntime = runtime.push([
+        ...node.args,
+        funcIndex,
+        callInstruction(
+          node.calledFunction,
+          node.functionDetails,
+          targetPosition,
+        ),
+        stackFrameTearDownInstruction(
+          pointers.basePointer.value,
+          pointers.stackPointer.value,
+          targetPosition,
+        ),
+      ]);
+
+      return newRuntime;
     } else {
       const temp = node.calledFunction;
-      funcIndex = temp.functionAddress;
+      const funcIndex: ExpressionP = temp.functionAddress;
+
+      const newRuntime = runtime.push([
+        ...node.args,
+        funcIndex,
+        functionIndexWrapper(),
+        callInstruction(
+          node.calledFunction,
+          node.functionDetails,
+          temp.functionAddress.position,
+        ),
+        stackFrameTearDownInstruction(
+          pointers.basePointer.value,
+          pointers.stackPointer.value,
+          temp.functionAddress.position,
+        ),
+      ]);
+
+      return newRuntime;
     }
-
-    const newRuntime = runtime.push([
-      ...node.args,
-      funcIndex,
-      functionIndexWrapper(),
-      callInstruction(
-        node.calledFunction,
-        node.functionDetails
-      ),
-      stackFrameTearDownInstruction(
-        pointers.basePointer.value,
-        pointers.stackPointer.value
-      ),
-    ]);
-
-    return newRuntime;
   },
 
- // ========== EXPRESSIONS ==========
+  // ========== EXPRESSIONS ==========
 
   IntegerConstant: (runtime: Runtime, node: IntegerConstantP): Runtime => {
     return runtime.pushValue(node);
@@ -371,40 +430,57 @@ export const NodeEvaluator: {
     return runtime.pushValue(node);
   },
 
-  BinaryExpression: (runtime: Runtime, node: BinaryExpressionP): Runtime => {    
-    const runtimeWithInstruction = runtime.pushInstruction([binaryOpInstruction(node.operator, node.dataType)]);
+  BinaryExpression: (runtime: Runtime, node: BinaryExpressionP): Runtime => {
+    const runtimeWithInstruction = runtime.pushInstruction([
+      binaryOpInstruction(node.operator, node.dataType, node.position),
+    ]);
     const runtimeWithRight = runtimeWithInstruction.pushNode([node.rightExpr]);
-    
-    const newRuntime = runtime.push([node.leftExpr, node.rightExpr, binaryOpInstruction(node.operator, node.dataType)]) 
+
+    const newRuntime = runtime.push([
+      node.leftExpr,
+      node.rightExpr,
+      binaryOpInstruction(node.operator, node.dataType, node.position),
+    ]);
 
     return runtimeWithRight.pushNode([node.leftExpr]);
   },
 
   UnaryExpression: (runtime: Runtime, node: UnaryExpressionP): Runtime => {
-    const runtimeWithInstruction = runtime.pushInstruction([unaryOpInstruction(node.operator)]);
+    const runtimeWithInstruction = runtime.pushInstruction([
+      unaryOpInstruction(node.operator, node.position),
+    ]);
     return runtimeWithInstruction.pushNode([node.expr]);
   },
 
-  PreStatementExpression: (runtime: Runtime, node: PreStatementExpressionP): Runtime => {
-    const newRuntime = runtime.push([
-      ...node.statements,
-      node.expr
-    ])
+  PreStatementExpression: (
+    runtime: Runtime,
+    node: PreStatementExpressionP,
+  ): Runtime => {
+    const newRuntime = runtime.push([...node.statements, node.expr]);
 
     return newRuntime;
   },
 
-  PostStatementExpression: (runtime: Runtime, node: PostStatementExpressionP): Runtime => {
-    const newRuntime = runtime.push([
-      node.expr,
-      ...node.statements
-    ])
+  PostStatementExpression: (
+    runtime: Runtime,
+    node: PostStatementExpressionP,
+  ): Runtime => {
+    const newRuntime = runtime.push([node.expr, ...node.statements]);
 
     return newRuntime;
   },
 
-  ConditionalExpression: (runtime: Runtime, node: ConditionalExpressionP): Runtime => {
-    const runtimeWithInstruction = runtime.pushInstruction([branchOpInstruction([node.trueExpression], [node.falseExpression])]);
+  ConditionalExpression: (
+    runtime: Runtime,
+    node: ConditionalExpressionP,
+  ): Runtime => {
+    const runtimeWithInstruction = runtime.pushInstruction([
+      branchOpInstruction(
+        [node.trueExpression],
+        [node.falseExpression],
+        node.position,
+      ),
+    ]);
     return runtimeWithInstruction.pushNode([node.condition]);
-  }
+  },
 };

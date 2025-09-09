@@ -5,11 +5,10 @@ import {
   generateCompilationWarningMessage,
 } from "~src/errors";
 
-import preprocessor from "~src/parser/peggyjs/preprocessor"
-import lexer from "~src/parser/peggyjs/lexer"
-import parser from "~src/parser/peggyjs/parser"
+import preprocessor from "~src/parser/peggyjs/preprocessor";
+import lexer from "~src/parser/peggyjs/lexer";
+import parser from "~src/parser/peggyjs/parser";
 import { Position } from "~src/parser/c-ast/misc";
-
 
 export interface ParserOutput {
   cAstRoot: CAstRoot;

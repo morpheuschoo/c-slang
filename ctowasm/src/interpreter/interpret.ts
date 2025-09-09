@@ -3,9 +3,14 @@ import { Runtime } from "~src/interpreter/runtime";
 import { Control } from "~src/interpreter/utils/control";
 import { Stash } from "~src/interpreter/utils/stash";
 import { Memory } from "~src/interpreter/memory";
-import ModuleRepository, { ModuleName, ModulesGlobalConfig } from "~src/modules";
+import ModuleRepository, {
+  ModuleName,
+  ModulesGlobalConfig,
+} from "~src/modules";
+import { defaultPosition } from "./utils/constantsUtils";
 
 export interface CContext {
+  astRoot: CAstRootP;
   control: Control;
   stash: Stash;
   memory: Memory;
@@ -17,60 +22,78 @@ export class Interpreter {
   private readonly astRootNode: CAstRootP;
   private readonly includedModules: ModuleName[];
   private readonly moduleConfig: ModulesGlobalConfig;
+  private readonly sourceCode: string;
 
   constructor(
     astRootNode: CAstRootP,
     includedModules: ModuleName[],
-    moduleConfig: ModulesGlobalConfig
+    moduleConfig: ModulesGlobalConfig,
+    sourceCode: string,
   ) {
     this.astRootNode = astRootNode;
     this.runtimeStack = []; // CURRENTLY NOT USED WITH HOW INTERPRETER IS SETUP
     this.includedModules = includedModules;
     this.moduleConfig = moduleConfig;
+    this.sourceCode = sourceCode;
   }
 
   async interpretTillStep(targetStep: number): Promise<CContext> {
     Runtime.astRootP = this.astRootNode;
     Runtime.includedModules = this.includedModules;
+    Runtime.sourceCode = this.sourceCode;
 
-    const mainFunction = Runtime.astRootP.functions.find(x => x.name === "main");
-    
-    if(!mainFunction) {
+    const mainFunction = Runtime.astRootP.functions.find(
+      (x) => x.name === "main",
+    );
+
+    if (!mainFunction) {
       throw new Error("Main function not defined");
     }
 
     // call main
-    const initialRuntime = new Runtime(new Control([{
-      type: "FunctionCall",
-      calledFunction: {
-        type: "DirectlyCalledFunction",
-        functionName: "main"
-      },
-      functionDetails: {
-        sizeOfParams: 0,
-        sizeOfReturn: 4,
-        parameters: [],
-        returnObjects: [{
-          dataType: "signed int",
-          offset: 0
-        }]
-      },
-      args: [],
-    }]))
-    
-    Runtime.modules = new ModuleRepository(
-      initialRuntime.cloneMemory().memory, 
-      new WebAssembly.Table({ element: "anyfunc", initial: 100 }), 
-      this.moduleConfig
+    const initialRuntime = new Runtime(
+      new Control([
+        {
+          type: "FunctionCall",
+          calledFunction: {
+            type: "DirectlyCalledFunction",
+            functionName: "main",
+            position: this.astRootNode.position,
+          },
+          functionDetails: {
+            sizeOfParams: 0,
+            sizeOfReturn: 4,
+            parameters: [],
+            returnObjects: [
+              {
+                dataType: "signed int",
+                offset: 0,
+              },
+            ],
+          },
+          args: [],
+          position: this.astRootNode.position,
+        },
+      ]),
     );
 
-    for(const moduleName of Runtime.includedModules) {
-      if (typeof Runtime.modules.modules[moduleName].instantiate !== "undefined") {
-        await (Runtime.modules.modules[moduleName].instantiate as () => Promise<void>)();
+    Runtime.modules = new ModuleRepository(
+      initialRuntime.cloneMemory().memory,
+      new WebAssembly.Table({ element: "anyfunc", initial: 2 }),
+      this.moduleConfig,
+    );
+
+    for (const moduleName of Runtime.includedModules) {
+      if (
+        typeof Runtime.modules.modules[moduleName].instantiate !== "undefined"
+      ) {
+        await (
+          Runtime.modules.modules[moduleName].instantiate as () => Promise<void>
+        )();
       }
     }
     this.runtimeStack.push(initialRuntime);
-    
+
     let currentRuntime = initialRuntime;
 
     let currStep: number = 0;
@@ -89,57 +112,74 @@ export class Interpreter {
     }
 
     return {
+      astRoot: this.astRootNode,
       control: currentRuntime.getControl(),
       stash: currentRuntime.getStash(),
       memory: currentRuntime.getMemory(),
       step: currStep,
-    }
+    };
   }
 
   async interpret(): Promise<void> {
     Runtime.astRootP = this.astRootNode;
     Runtime.includedModules = this.includedModules;
 
-    const mainFunction = Runtime.astRootP.functions.find(x => x.name === "main");
-    
-    if(!mainFunction) {
+    const mainFunction = Runtime.astRootP.functions.find(
+      (x) => x.name === "main",
+    );
+
+    if (!mainFunction) {
       throw new Error("Main function not defined");
     }
 
     // call main
-    const initialRuntime = new Runtime(new Control([{
-      type: "FunctionCall",
-      calledFunction: {
-        type: "DirectlyCalledFunction",
-        functionName: "main"
-      },
-      functionDetails: {
-        sizeOfParams: 0,
-        sizeOfReturn: 4,
-        parameters: [],
-        returnObjects: [{
-          dataType: "signed int",
-          offset: 0
-        }]
-      },
-      args: [],
-    }]))
-    
-    Runtime.modules = new ModuleRepository(
-      initialRuntime.cloneMemory().memory, 
-      new WebAssembly.Table({ element: "anyfunc", initial: 100 }), 
-      this.moduleConfig
+    console.log("Starting interpretation...");
+    console.log(this.astRootNode.position);
+    const initialRuntime = new Runtime(
+      new Control([
+        {
+          type: "FunctionCall",
+          calledFunction: {
+            type: "DirectlyCalledFunction",
+            functionName: "main",
+            position: defaultPosition,
+          },
+          functionDetails: {
+            sizeOfParams: 0,
+            sizeOfReturn: 4,
+            parameters: [],
+            returnObjects: [
+              {
+                dataType: "signed int",
+                offset: 0,
+              },
+            ],
+          },
+          args: [],
+          position: this.astRootNode.position,
+        },
+      ]),
     );
 
-    for(const moduleName of Runtime.includedModules) {
-      if (typeof Runtime.modules.modules[moduleName].instantiate !== "undefined") {
-        await (Runtime.modules.modules[moduleName].instantiate as () => Promise<void>)();
+    Runtime.modules = new ModuleRepository(
+      initialRuntime.cloneMemory().memory,
+      new WebAssembly.Table({ element: "anyfunc", initial: 100 }),
+      this.moduleConfig,
+    );
+
+    for (const moduleName of Runtime.includedModules) {
+      if (
+        typeof Runtime.modules.modules[moduleName].instantiate !== "undefined"
+      ) {
+        await (
+          Runtime.modules.modules[moduleName].instantiate as () => Promise<void>
+        )();
       }
     }
     this.runtimeStack.push(initialRuntime);
-    
+
     let currentRuntime = initialRuntime;
-    
+
     // console.log(currentRuntime.toString());
 
     while (!currentRuntime.hasCompleted()) {
@@ -153,15 +193,15 @@ export class Interpreter {
     if (this.runtimeStack.length === 0) {
       return "Runtime Stack: <empty>";
     }
-    
+
     let result = `Runtime Stack: ${this.runtimeStack.length} states\n`;
-    
+
     for (let i = 0; i < this.runtimeStack.length; i++) {
       result += `\n====== State ${i + 1} ======\n`;
       result += this.runtimeStack[i].toString();
       result += "\n";
     }
-    
+
     return result;
   }
 }

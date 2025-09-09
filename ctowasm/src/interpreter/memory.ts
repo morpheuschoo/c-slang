@@ -1,28 +1,43 @@
 import { KB, WASM_PAGE_IN_HEX } from "~src/common/constants";
-import { calculateNumberOfPagesNeededForBytes, getSizeOfScalarDataType, isFloatType, isIntegerType, primaryDataTypeSizes } from "~src/common/utils";
+import {
+  calculateNumberOfPagesNeededForBytes,
+  getSizeOfScalarDataType,
+  isFloatType,
+  isIntegerType,
+  primaryDataTypeSizes,
+} from "~src/common/utils";
 import { WASM_ADDR_TYPE } from "~src/translator/memoryUtil";
 import { SharedWasmGlobalVariables } from "~src/modules";
-import { FloatDataType, IntegerDataType, ScalarCDataType } from "~src/common/types";
+import {
+  FloatDataType,
+  IntegerDataType,
+  ScalarCDataType,
+} from "~src/common/types";
 import { ConstantP } from "~src/processor/c-ast/expression/constants";
 import { convertConstantToByteStr } from "~src/processor/byteStrUtil";
 import { Runtime } from "./runtime";
-import { createMemoryAddress, MemoryAddress, resolveValueToConstantP } from "~src/interpreter/utils/addressUtils";
+import {
+  createMemoryAddress,
+  MemoryAddress,
+  resolveValueToConstantP,
+} from "~src/interpreter/utils/addressUtils";
 import { StashItem } from "~src/interpreter/utils/stash";
+import { defaultPosition } from "./utils/constantsUtils";
 
 export interface MemoryWriteInterface {
-  type: "MemoryWriteInterface",
-  address: bigint,
-  value: ConstantP,
-  dataType: ScalarCDataType
+  type: "MemoryWriteInterface";
+  address: bigint;
+  value: ConstantP;
+  dataType: ScalarCDataType;
 }
 
-export function parseByteStr(byteStr: string) : Uint8Array {
-  const matches = byteStr.match(/\\([0-9a-fA-F]{2})/g)
-  if(!matches) {
-    return new Uint8Array;
+export function parseByteStr(byteStr: string): Uint8Array {
+  const matches = byteStr.match(/\\([0-9a-fA-F]{2})/g);
+  if (!matches) {
+    return new Uint8Array();
   }
   const byteArray = new Uint8Array(matches.length);
-  for(let i = 0; i < matches.length; ++i) {
+  for (let i = 0; i < matches.length; ++i) {
     const byteValue = parseInt(matches[i].slice(1), 16);
     byteArray[i] = byteValue;
   }
@@ -31,33 +46,37 @@ export function parseByteStr(byteStr: string) : Uint8Array {
 
 export class Memory {
   memory: WebAssembly.Memory;
-  
+
   dataSegmentSizeInBytes: number;
   dataSegmentByteStr: string;
-  heapBuffer: number // Heap size limit in bytes
-  stackBuffer: number // Stacks size limit in bytes
-  
+  heapBuffer: number; // Heap size limit in bytes
+  stackBuffer: number; // Stacks size limit in bytes
+
   sharedWasmGlobalVariables: SharedWasmGlobalVariables;
-  
+
+  static cnt = 0;
+
   // Constructor to initiate the first runtime object
   constructor(
     dataSegmentByteStr: string, // The string of bytes (each byte is in the form "\\XX" where X is a digit in base-16) to initialize the data segment with, determined by processing initializers for data segment variables.
     dataSegmentSizeInBytes: number,
     heapBuffer?: number,
-    stackBuffer?: number
+    stackBuffer?: number,
   ) {
+    console.log(Memory.cnt + 1);
+    Memory.cnt++;
     this.dataSegmentSizeInBytes = dataSegmentSizeInBytes;
-    this.dataSegmentByteStr = dataSegmentByteStr
-    this.heapBuffer = heapBuffer ?? 32 * KB;
-    this.stackBuffer = stackBuffer ?? 32 * KB;
+    this.dataSegmentByteStr = dataSegmentByteStr;
+    this.heapBuffer = heapBuffer ?? 1 * KB;
+    this.stackBuffer = stackBuffer ?? 1 * KB;
 
-    const totalMemory = this.dataSegmentSizeInBytes + this.heapBuffer + this.stackBuffer;
+    const totalMemory =
+      this.dataSegmentSizeInBytes + this.heapBuffer + this.stackBuffer;
     const initialPages = calculateNumberOfPagesNeededForBytes(totalMemory);
 
     this.memory = new WebAssembly.Memory({ initial: initialPages });
 
     this.sharedWasmGlobalVariables = {
-      
       /**
        * stackPointer set to the highest address
        * basePointer set to the highest address
@@ -74,11 +93,11 @@ export class Memory {
       heapPointer: new WebAssembly.Global(
         { value: WASM_ADDR_TYPE, mutable: true },
         dataSegmentSizeInBytes + 4,
-      )
+      ),
     };
 
     // Initiate the data segment that stores global and static values
-    const dataSegmentByteArray = parseByteStr(dataSegmentByteStr)
+    const dataSegmentByteArray = parseByteStr(dataSegmentByteStr);
     const view = new Uint8Array(this.memory.buffer);
     for (let i = 0; i < dataSegmentByteArray.length; i++) {
       view[i] = dataSegmentByteArray[i];
@@ -86,23 +105,28 @@ export class Memory {
   }
 
   // sets the values for stack pointer, base pointer, heap pointer
-  
+
   // Coppies the current memory buffer and pointers on to Global Modules memory
   writeToModuleMemory() {
     const memoryView = new Uint8Array(this.memory.buffer);
     const moduleView = new Uint8Array(Runtime.modules.memory.buffer);
 
-    if(memoryView.length !== moduleView.length) {
-      throw new Error(`Memory size mismatch: interpreter memory length (${memoryView.length}) does not match module memory length (${moduleView.length})`);
+    if (memoryView.length !== moduleView.length) {
+      throw new Error(
+        `Memory size mismatch: interpreter memory length (${memoryView.length}) does not match module memory length (${moduleView.length})`,
+      );
     }
 
-    for(let i = 0;i < memoryView.byteLength;i++) {
+    for (let i = 0; i < memoryView.byteLength; i++) {
       moduleView[i] = memoryView[i];
     }
 
-    Runtime.modules.sharedWasmGlobalVariables.basePointer.value = this.sharedWasmGlobalVariables.basePointer.value;
-    Runtime.modules.sharedWasmGlobalVariables.heapPointer.value = this.sharedWasmGlobalVariables.heapPointer.value;
-    Runtime.modules.sharedWasmGlobalVariables.stackPointer.value = this.sharedWasmGlobalVariables.stackPointer.value;
+    Runtime.modules.sharedWasmGlobalVariables.basePointer.value =
+      this.sharedWasmGlobalVariables.basePointer.value;
+    Runtime.modules.sharedWasmGlobalVariables.heapPointer.value =
+      this.sharedWasmGlobalVariables.heapPointer.value;
+    Runtime.modules.sharedWasmGlobalVariables.stackPointer.value =
+      this.sharedWasmGlobalVariables.stackPointer.value;
   }
 
   // Create a new memory instance that has the same content as the modules memory
@@ -112,26 +136,33 @@ export class Memory {
     const moduleView = new Uint8Array(Runtime.modules.memory.buffer);
     const memoryView = new Uint8Array(resultMemory.memory.buffer);
 
-    if(memoryView.byteLength !== moduleView.byteLength) {
-      throw new Error(`Memory size mismatch: interpreter memory length (${memoryView.length}) does not match module memory length (${moduleView.length})`);
+    if (memoryView.byteLength !== moduleView.byteLength) {
+      throw new Error(
+        `Memory size mismatch: interpreter memory length (${memoryView.length}) does not match module memory length (${moduleView.length})`,
+      );
     }
 
-    for(let i = 0;i < memoryView.byteLength;i++) {
+    for (let i = 0; i < memoryView.byteLength; i++) {
       memoryView[i] = moduleView[i];
     }
 
-    resultMemory.sharedWasmGlobalVariables.basePointer.value = Runtime.modules.sharedWasmGlobalVariables.basePointer.value;
-    resultMemory.sharedWasmGlobalVariables.heapPointer.value = Runtime.modules.sharedWasmGlobalVariables.heapPointer.value;
-    resultMemory.sharedWasmGlobalVariables.stackPointer.value = Runtime.modules.sharedWasmGlobalVariables.stackPointer.value;
-  
+    resultMemory.sharedWasmGlobalVariables.basePointer.value =
+      Runtime.modules.sharedWasmGlobalVariables.basePointer.value;
+    resultMemory.sharedWasmGlobalVariables.heapPointer.value =
+      Runtime.modules.sharedWasmGlobalVariables.heapPointer.value;
+    resultMemory.sharedWasmGlobalVariables.stackPointer.value =
+      Runtime.modules.sharedWasmGlobalVariables.stackPointer.value;
+
     return resultMemory;
   }
 
   setPointers(stackPointer: number, basePointer: number, heapPointer: number) {
-    if(heapPointer > stackPointer) {
-      throw new Error("Segmentation fault: Heap pointer clashed with stack pointer");
+    if (heapPointer > stackPointer) {
+      throw new Error(
+        "Segmentation fault: Heap pointer clashed with stack pointer",
+      );
     }
-    
+
     this.sharedWasmGlobalVariables = {
       stackPointer: new WebAssembly.Global(
         { value: WASM_ADDR_TYPE, mutable: true },
@@ -144,11 +175,16 @@ export class Memory {
       heapPointer: new WebAssembly.Global(
         { value: WASM_ADDR_TYPE, mutable: true },
         heapPointer,
-      )
+      ),
     };
   }
 
-  stackFrameSetup(sizeOfParams: number, sizeOfLocals: number, sizeOfReturn: number, parameters: StashItem[]): Memory {
+  stackFrameSetup(
+    sizeOfParams: number,
+    sizeOfLocals: number,
+    sizeOfReturn: number,
+    parameters: StashItem[],
+  ): Memory {
     const newMemory = this.clone();
     const totalSize = sizeOfParams + sizeOfLocals + sizeOfReturn;
 
@@ -158,38 +194,46 @@ export class Memory {
     newMemory.setPointers(
       SP,
       BP,
-      this.sharedWasmGlobalVariables.heapPointer.value
-    )
+      this.sharedWasmGlobalVariables.heapPointer.value,
+    );
 
     let offset = 0;
-    const writeParameters: MemoryWriteInterface[] = parameters.map(writeObject => {
-      if (
-        writeObject.type !== "IntegerConstant" && 
-        writeObject.type !== "FloatConstant" && 
-        writeObject.type !== "MemoryAddress"
-      ) {
-        throw new Error(`Did not expect ${writeObject.type} in stackFrameSetup`);
-      }
+    const writeParameters: MemoryWriteInterface[] = parameters.map(
+      (writeObject) => {
+        if (
+          writeObject.type !== "IntegerConstant" &&
+          writeObject.type !== "FloatConstant" &&
+          writeObject.type !== "MemoryAddress"
+        ) {
+          throw new Error(
+            `Did not expect ${writeObject.type} in stackFrameSetup`,
+          );
+        }
 
-      const dataType: ScalarCDataType = writeObject.type === "MemoryAddress" ? "pointer" : writeObject.dataType;
+        const dataType: ScalarCDataType =
+          writeObject.type === "MemoryAddress"
+            ? "pointer"
+            : writeObject.dataType;
 
-      const size = getSizeOfScalarDataType(dataType);
-      offset -= size;
+        const size = getSizeOfScalarDataType(dataType);
+        offset -= size;
 
-      const writeAddress = BigInt(offset) + BigInt(newMemory.sharedWasmGlobalVariables.basePointer.value);
+        const writeAddress =
+          BigInt(offset) +
+          BigInt(newMemory.sharedWasmGlobalVariables.basePointer.value);
 
-      // if MemoryAddress convert it to a ConstantP
-      const writeValue = resolveValueToConstantP(writeObject);
+        // if MemoryAddress convert it to a ConstantP
+        const writeValue = resolveValueToConstantP(writeObject);
 
-      // ConstantP is stored as ConstantP
-      return {
-        type: "MemoryWriteInterface",
-        address: writeAddress,
-        dataType: dataType,
-        value: writeValue
-      };
-
-    });
+        // ConstantP is stored as ConstantP
+        return {
+          type: "MemoryWriteInterface",
+          address: writeAddress,
+          dataType: dataType,
+          value: writeValue,
+        };
+      },
+    );
 
     return newMemory.write(writeParameters);
   }
@@ -199,33 +243,41 @@ export class Memory {
     newMemory.setPointers(
       stackPointer,
       basePointer,
-      this.sharedWasmGlobalVariables.heapPointer.value
-    )
+      this.sharedWasmGlobalVariables.heapPointer.value,
+    );
 
     return newMemory;
   }
 
   checkOutOfBounds(address: bigint) {
-    return address < 0 || address >= this.memory.buffer.byteLength; 
+    return address < 0 || address >= this.memory.buffer.byteLength;
   }
 
   // function to write a data type with a value to the memory in the address
-  write(values: MemoryWriteInterface[]) : Memory {
+  write(values: MemoryWriteInterface[]): Memory {
     const newMemory = this.clone();
     const newMemoryView = new Uint8Array(newMemory.memory.buffer);
 
-    for(const value of values) {
+    for (const value of values) {
       const bytestr = convertConstantToByteStr(value.value, value.dataType);
       const byteArray = parseByteStr(bytestr);
-  
-      if(this.checkOutOfBounds(value.address)) {
+
+      if (this.checkOutOfBounds(value.address)) {
         console.log(value.address);
         console.log(byteArray.length);
         console.log(bytestr);
         console.log(value.dataType);
         throw new Error("Memory out of bounds");
       }
-      for(let i = 0; i < Math.min(byteArray.length, this.memory.buffer.byteLength - Number(value.address)); i++) {
+      for (
+        let i = 0;
+        i <
+        Math.min(
+          byteArray.length,
+          this.memory.buffer.byteLength - Number(value.address),
+        );
+        i++
+      ) {
         newMemoryView[i + Number(value.address)] = byteArray[i];
       }
     }
@@ -235,38 +287,48 @@ export class Memory {
 
   load(address: MemoryAddress, dataType: ScalarCDataType): StashItem {
     // handles pointers
-    if(dataType === "pointer") {
+    if (dataType === "pointer") {
       // Load pointer value as "unsigned int" as they occupy the same amount of space
       const size = primaryDataTypeSizes["unsigned int"];
       this.checkOutOfBounds(address.value);
-      
-      let view = new Uint8Array(this.memory.buffer);
+
+      const view = new Uint8Array(this.memory.buffer);
       let value = 0n;
-      
-      for (let i = 0; i < Math.min(size, this.memory.buffer.byteLength - Number(address.value)); i++) {
+
+      for (
+        let i = 0;
+        i <
+        Math.min(size, this.memory.buffer.byteLength - Number(address.value));
+        i++
+      ) {
         value |= BigInt(view[Number(address.value) + i]) << BigInt(8 * i);
       }
-      
+
       // returns a MemoryAddress instead of a ConstantP
       return createMemoryAddress(value);
     }
-    
+
     // handles the rest of the ScalarCDataTypes
     const size = primaryDataTypeSizes[dataType];
     this.checkOutOfBounds(address.value);
-    
-    let view = new Uint8Array(this.memory.buffer);
-    if(isIntegerType(dataType)) {
+
+    const view = new Uint8Array(this.memory.buffer);
+    if (isIntegerType(dataType)) {
       let value = 0n;
-      for (let i = 0; i < Math.min(size, this.memory.buffer.byteLength - Number(address.value)); i++) {
+      for (
+        let i = 0;
+        i <
+        Math.min(size, this.memory.buffer.byteLength - Number(address.value));
+        i++
+      ) {
         value |= BigInt(view[Number(address.value) + i]) << BigInt(8 * i);
       }
-      
+
       const signBit = 1n << BigInt(size * 8 - 1);
       const fullMask = 1n << BigInt(size * 8);
 
-      if(value & signBit) {
-        value = value - fullMask
+      if (value & signBit) {
+        value = value - fullMask;
       } else {
         value = value;
       }
@@ -274,9 +336,10 @@ export class Memory {
       return {
         type: "IntegerConstant",
         value: value,
-        dataType: dataType as IntegerDataType
-      }
-    } else if(isFloatType(dataType)) {
+        dataType: dataType as IntegerDataType,
+        position: defaultPosition,
+      };
+    } else if (isFloatType(dataType)) {
       const buffer = this.memory.buffer;
       const offset = Number(address.value);
       let floatValue;
@@ -288,32 +351,34 @@ export class Memory {
       return {
         type: "FloatConstant",
         value: floatValue,
-        dataType: dataType as FloatDataType
-      }
+        dataType: dataType as FloatDataType,
+        position: defaultPosition,
+      };
     } else {
       throw new Error("Unknown load value type");
     }
   }
 
-  clone() : Memory {
-    const clone = new Memory(
-      this.dataSegmentByteStr,
-      this.dataSegmentSizeInBytes,
-      this.heapBuffer,
-      this.stackBuffer
-    )
+  clone(): Memory {
+    return this;
+    // const clone = new Memory(
+    //   this.dataSegmentByteStr,
+    //   this.dataSegmentSizeInBytes,
+    //   this.heapBuffer,
+    //   this.stackBuffer
+    // )
 
-    const originalView = new Uint8Array(this.memory.buffer);
-    const cloneView = new Uint8Array(clone.memory.buffer);
-    cloneView.set(originalView);
-    
-    clone.setPointers(
-      this.sharedWasmGlobalVariables.stackPointer.value,
-      this.sharedWasmGlobalVariables.basePointer.value,
-      this.sharedWasmGlobalVariables.heapPointer.value
-    )
+    // const originalView = new Uint8Array(this.memory.buffer);
+    // const cloneView = new Uint8Array(clone.memory.buffer);
+    // cloneView.set(originalView);
 
-    return clone;
+    // clone.setPointers(
+    //   this.sharedWasmGlobalVariables.stackPointer.value,
+    //   this.sharedWasmGlobalVariables.basePointer.value,
+    //   this.sharedWasmGlobalVariables.heapPointer.value
+    // )
+
+    // return clone;
   }
 
   getFormattedMemoryView(start: number = 0, end?: number): string {
@@ -324,7 +389,7 @@ export class Memory {
     const SP = Number(this.sharedWasmGlobalVariables.stackPointer.value);
     const HP = Number(this.sharedWasmGlobalVariables.heapPointer.value);
 
-    let result = "";
+    const result = "";
     // result += "=== Memory Layout (partial) ===\n";
     // result += `Base Pointer (BP):  0x${BP.toString(10)} (${BP})\n`;
     // result += `Stack Pointer (SP): 0x${SP.toString(10)} (${SP})\n`;
@@ -341,6 +406,4 @@ export class Memory {
 
     return result;
   }
-
-
 }

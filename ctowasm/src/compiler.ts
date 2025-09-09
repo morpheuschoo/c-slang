@@ -12,7 +12,10 @@ import {
   generateCompilationWarningMessage,
   toJson,
 } from "~src/errors";
-import ModuleRepository, { ModuleName, ModulesGlobalConfig } from "~src/modules";
+import ModuleRepository, {
+  ModuleName,
+  ModulesGlobalConfig,
+} from "~src/modules";
 import { interpret, evaluateTillStep } from "~src/interpreter/index";
 import { CContext } from "~src/interpreter/interpret";
 
@@ -65,7 +68,7 @@ export async function compile(
         generateCompilationWarningMessage(w.message, cSourceCode, w.position),
       ),
     );
-    
+
     // interpret(astRootNode, cAstRoot.includedModules, moduleRepository.config); // here
 
     const wasmModule = translate(astRootNode, moduleRepository);
@@ -112,8 +115,14 @@ export async function evaluate(
         generateCompilationWarningMessage(w.message, cSourceCode, w.position),
       ),
     );
-    
-    const outputContext = await evaluateTillStep(astRootNode, cAstRoot.includedModules, moduleRepository.config, targetStep);
+
+    const outputContext = await evaluateTillStep(
+      astRootNode,
+      cAstRoot.includedModules,
+      moduleRepository.config,
+      targetStep,
+      cSourceCode,
+    );
 
     return {
       status: "success",
@@ -236,9 +245,9 @@ export function generate_WAT_AST(
 export function interpret_C_AST(
   cSourceCode: string,
   moduleRepository: ModuleRepository,
-  moduleConfig: ModulesGlobalConfig
+  moduleConfig: ModulesGlobalConfig,
 ) {
   const { cAstRoot } = parse(cSourceCode, moduleRepository);
   const { astRootNode } = process(cAstRoot, moduleRepository);
-  interpret(astRootNode, cAstRoot.includedModules, moduleConfig);
+  interpret(astRootNode, cAstRoot.includedModules, moduleConfig, cSourceCode);
 }
