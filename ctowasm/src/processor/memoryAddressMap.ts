@@ -10,6 +10,7 @@ export interface MemoryAddressEntry {
 
 export interface MemoryAddressKey {
   name: string;
+  scope: string;
   offset: number;
 }
 
@@ -21,7 +22,8 @@ export class MemoryAddressMap {
     const scopedName = this.getScopedName(name);
     this.addressMap.set(
       {
-        name: scopedName,
+        name: name,
+        scope: scopedName,
         offset: entry.offset,
       },
       entry
@@ -62,8 +64,8 @@ export class MemoryAddressMap {
     if (this.scopeChain.length === 0) {
       return name;
     }
-
-    return `${this.scopeChain.join(".")}.${name}`;
+    return this.scopeChain[this.scopeChain.length - 1];
+    // return `${this.scopeChain.join(".")}.${name}`;
   }
 
   static buildFromSymbolTable(

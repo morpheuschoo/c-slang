@@ -175,16 +175,19 @@ export const forLoopInstruction = (
 
 // Tears down the current stack frame and moves base pointer and stack pointer to the previous stack frame
 export interface StackFrameTearDownInstruction extends BaseInstruction {
+  functionName: string;
   type: InstructionType.STACKFRAMETEARDOWNINSTRUCTION;
   basePointer: number;
   stackPointer: number;
 }
 
 export const stackFrameTearDownInstruction = (
+  functionName: string,
   basePointer: number,
   stackPointer: number,
   position: Position,
 ): StackFrameTearDownInstruction => ({
+  functionName: functionName,
   type: InstructionType.STACKFRAMETEARDOWNINSTRUCTION,
   basePointer: basePointer,
   stackPointer: stackPointer,

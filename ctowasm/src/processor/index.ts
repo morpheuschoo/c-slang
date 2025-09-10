@@ -101,13 +101,13 @@ function debugPrintMemoryMap(): void {
 
   map.forEach((entry, name) => {
     // Check if this is a scoped name (contains a dot)
-    const scopeMatch = name.name.match(/^(.+)\.(.+)$/);
+    // const scopeMatch = name.name.match(/^(.+)\.(.+)$/);
 
     if (entry.isGlobal) {
       globalEntries.push([name.name, entry]);
-    } else if (scopeMatch) {
-      const functionName = scopeMatch[1];
-      const varName = scopeMatch[2];
+    } else if (name.name && name.scope) {
+      const functionName = name.scope;
+      const varName = name.name;
 
       if (!localEntriesByFunction[functionName]) {
         localEntriesByFunction[functionName] = [];

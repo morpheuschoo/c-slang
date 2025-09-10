@@ -111,6 +111,9 @@ export class Interpreter {
       }
     }
 
+    // setup environment for visualizer
+    
+
     return {
       astRoot: this.astRootNode,
       control: currentRuntime.getControl(),

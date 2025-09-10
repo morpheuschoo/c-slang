@@ -30,6 +30,8 @@ class MemoryManager {
     );
   }
 
+  // public getSymbolTable(): Map<>
+
   // public getVariableAddress(name: string): number | undefined {
   //   const entry = this.addressMap.getVariableAddress(name);
   //   return entry?.offset;

@@ -15,7 +15,6 @@ import {
   stackFrameTearDownInstruction,
   unaryOpInstruction,
   whileLoopInstruction,
-  functionIndexWrapper,
   forLoopInstruction,
 } from "~src/interpreter/controlItems/instructions";
 import { CNodeType } from "~src/interpreter/controlItems/types";
@@ -70,14 +69,14 @@ import { defaultPosition } from "../utils/constantsUtils";
 export const NodeEvaluator: {
   [Type in CNodeType]?: (
     runtime: Runtime,
-    node: Extract<CNodeP, { type: Type }>,
+    node: Extract<CNodeP, { type: Type }>
   ) => Runtime;
 } = {
   // ========== STATEMENTS ==========
 
   ExpressionStatement: (
     runtime: Runtime,
-    node: ExpressionStatementP,
+    node: ExpressionStatementP
   ): Runtime => {
     const runtimeWithPop = runtime.pushInstruction([popInstruction()]);
     return runtimeWithPop.pushNode([node.expr]);
@@ -85,13 +84,13 @@ export const NodeEvaluator: {
 
   SelectionStatement: (
     runtime: Runtime,
-    node: SelectionStatementP,
+    node: SelectionStatementP
   ): Runtime => {
     const runtimeWithPushedInstruction = runtime.pushInstruction([
       branchOpInstruction(
         node.ifStatements,
         node.elseStatements ?? [],
-        node.position,
+        node.position
       ),
     ]);
 
@@ -116,7 +115,7 @@ export const NodeEvaluator: {
         node.condition,
         node.body,
         hasContinue,
-        node.position,
+        node.position
       ),
     ]);
 
@@ -142,7 +141,7 @@ export const NodeEvaluator: {
         node.condition,
         node.body,
         hasContinue,
-        node.position,
+        node.position
       ),
     ]);
 
@@ -168,7 +167,7 @@ export const NodeEvaluator: {
       node.update,
       condition,
       hasContinue,
-      node.position,
+      node.position
     );
 
     let pRuntime = runtime;
@@ -314,8 +313,8 @@ export const NodeEvaluator: {
   LocalAddress: (runtime: Runtime, node: LocalAddress): Runtime => {
     return runtime.pushValue(
       createMemoryAddress(
-        BigInt(runtime.getPointers().basePointer.value) + node.offset.value,
-      ),
+        BigInt(runtime.getPointers().basePointer.value) + node.offset.value
+      )
     );
   },
 
@@ -325,19 +324,19 @@ export const NodeEvaluator: {
 
   ReturnObjectAddress: (
     runtime: Runtime,
-    node: ReturnObjectAddress,
+    node: ReturnObjectAddress
   ): Runtime => {
     if (node.subtype === "load") {
       return runtime.pushValue(
         createMemoryAddress(
-          BigInt(runtime.getPointers().stackPointer.value) + node.offset.value,
-        ),
+          BigInt(runtime.getPointers().stackPointer.value) + node.offset.value
+        )
       );
     } else {
       return runtime.pushValue(
         createMemoryAddress(
-          BigInt(runtime.getPointers().basePointer.value) + node.offset.value,
-        ),
+          BigInt(runtime.getPointers().basePointer.value) + node.offset.value
+        )
       );
     }
   },
@@ -352,18 +351,18 @@ export const NodeEvaluator: {
     const pointers = runtime.getPointers();
 
     if (node.calledFunction.type === "DirectlyCalledFunction") {
-      const temp = node.calledFunction;
-      temp as DirectlyCalledFunction;
+      const calledFunction = node.calledFunction;
+      calledFunction as DirectlyCalledFunction;
       const index = Runtime.astRootP.functionTable.findIndex(
-        (x) => x.functionName === temp.functionName,
+        (x) => x.functionName === calledFunction.functionName
       );
 
       const funcDetails = Runtime.astRootP.functions.find(
-        (x) => x.name === temp.functionName,
+        (x) => x.name === calledFunction.functionName
       );
 
       if (index === -1) {
-        throw new Error(`Function not found: ${temp.functionName}`);
+        throw new Error(`Function not found: ${calledFunction.functionName}`);
       }
 
       const targetPosition = funcDetails?.position || defaultPosition;
@@ -386,37 +385,39 @@ export const NodeEvaluator: {
         callInstruction(
           node.calledFunction,
           node.functionDetails,
-          targetPosition,
+          targetPosition
         ),
         stackFrameTearDownInstruction(
+          calledFunction.functionName,
           pointers.basePointer.value,
           pointers.stackPointer.value,
-          targetPosition,
+          targetPosition
         ),
       ]);
 
       return newRuntime;
     } else {
-      const temp = node.calledFunction;
-      const funcIndex: ExpressionP = temp.functionAddress;
+      throw new Error("TODO: Implement indirectly called function");
+      // const calledFunction = node.calledFunction;
+      // const funcIndex: ExpressionP = calledFunction.functionAddress;
 
-      const newRuntime = runtime.push([
-        ...node.args,
-        funcIndex,
-        functionIndexWrapper(),
-        callInstruction(
-          node.calledFunction,
-          node.functionDetails,
-          temp.functionAddress.position,
-        ),
-        stackFrameTearDownInstruction(
-          pointers.basePointer.value,
-          pointers.stackPointer.value,
-          temp.functionAddress.position,
-        ),
-      ]);
+      // const newRuntime = runtime.push([
+      //   ...node.args,
+      //   funcIndex,
+      //   functionIndexWrapper(),
+      //   callInstruction(
+      //     node.calledFunction,
+      //     node.functionDetails,
+      //     calledFunction.functionAddress.position
+      //   ),
+      //   stackFrameTearDownInstruction(
+      //     pointers.basePointer.value,
+      //     pointers.stackPointer.value,
+      //     calledFunction.functionAddress.position
+      //   ),
+      // ]);
 
-      return newRuntime;
+      // return newRuntime;
     }
   },
 
@@ -454,7 +455,7 @@ export const NodeEvaluator: {
 
   PreStatementExpression: (
     runtime: Runtime,
-    node: PreStatementExpressionP,
+    node: PreStatementExpressionP
   ): Runtime => {
     const newRuntime = runtime.push([...node.statements, node.expr]);
 
@@ -463,7 +464,7 @@ export const NodeEvaluator: {
 
   PostStatementExpression: (
     runtime: Runtime,
-    node: PostStatementExpressionP,
+    node: PostStatementExpressionP
   ): Runtime => {
     const newRuntime = runtime.push([node.expr, ...node.statements]);
 
@@ -472,13 +473,13 @@ export const NodeEvaluator: {
 
   ConditionalExpression: (
     runtime: Runtime,
-    node: ConditionalExpressionP,
+    node: ConditionalExpressionP
   ): Runtime => {
     const runtimeWithInstruction = runtime.pushInstruction([
       branchOpInstruction(
         [node.trueExpression],
         [node.falseExpression],
-        node.position,
+        node.position
       ),
     ]);
     return runtimeWithInstruction.pushNode([node.condition]);
