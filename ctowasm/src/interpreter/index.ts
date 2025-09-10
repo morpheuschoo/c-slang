@@ -62,18 +62,19 @@ import {
   PreStatementExpressionP,
   UnaryExpressionP,
 } from "~src/processor/c-ast/expression/expressions";
+import { memoryManager } from "../processor/memoryManager";
 
 export function interpret(
   astRootNode: CAstRootP,
   includedModules: ModuleName[],
   moduleConfig: ModulesGlobalConfig,
-  sourceCode: string,
+  sourceCode: string
 ): void {
   const interpreter = new Interpreter(
     astRootNode,
     includedModules,
     moduleConfig,
-    sourceCode,
+    sourceCode
   );
   interpreter.interpret();
 }
@@ -83,14 +84,15 @@ export async function evaluateTillStep(
   includedModules: ModuleName[],
   moduleConfig: ModulesGlobalConfig,
   targetStep: number,
-  sourceCode: string,
+  sourceCode: string
 ): Promise<CContext> {
   const interpreter = new Interpreter(
     astRootNode,
     includedModules,
     moduleConfig,
-    sourceCode,
+    sourceCode
   );
+  memoryManager.reload();
   return await interpreter.interpretTillStep(targetStep);
 }
 
@@ -134,7 +136,7 @@ export function controlItemToString(controlItem: ControlItem): string {
 
 export const instructionToString: {
   [InstrType in Instruction["type"]]: (
-    instruction: Extract<Instruction, { type: InstrType }>,
+    instruction: Extract<Instruction, { type: InstrType }>
   ) => string;
 } = {
   [InstructionType.BINARY_OP]: (controlItem: BinaryOpInstruction): string => {
@@ -163,7 +165,7 @@ export const instructionToString: {
   },
 
   [InstructionType.CONTINUE_MARK]: (
-    controlItem: ContinueMarkInstruction,
+    controlItem: ContinueMarkInstruction
   ): string => {
     return "Continue Mark";
   },
@@ -173,19 +175,19 @@ export const instructionToString: {
   },
 
   [InstructionType.FUNCTIONINDEXWRAPPER]: (
-    controlItem: FunctionIndexWrapper,
+    controlItem: FunctionIndexWrapper
   ): string => {
     return "Function Index Wrapper";
   },
 
   [InstructionType.MEMORY_LOAD]: (
-    controlItem: MemoryLoadInstruction,
+    controlItem: MemoryLoadInstruction
   ): string => {
     return "Memory Load: " + extractCodeSegment(controlItem);
   },
 
   [InstructionType.MEMORY_STORE]: (
-    controlItem: MemoryStoreInstruction,
+    controlItem: MemoryStoreInstruction
   ): string => {
     return "Memory Store: " + extractCodeSegment(controlItem);
   },
@@ -195,7 +197,7 @@ export const instructionToString: {
   },
 
   [InstructionType.STACKFRAMETEARDOWNINSTRUCTION]: (
-    controlItem: StackFrameTearDownInstruction,
+    controlItem: StackFrameTearDownInstruction
   ): string => {
     return "Stack tear down";
   },
@@ -211,7 +213,7 @@ export const instructionToString: {
 
 export const nodeToString: {
   [ContrlType in CNodeP["type"]]: (
-    controlItem: Extract<ControlItem, { type: ContrlType }>,
+    controlItem: Extract<ControlItem, { type: ContrlType }>
   ) => string;
 } = {
   ExpressionStatement: (controlItem: ExpressionStatementP): string => {
