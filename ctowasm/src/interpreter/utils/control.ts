@@ -4,6 +4,7 @@ import {
   Instruction,
   InstructionType,
   isInstruction,
+  StackFrameTearDownInstruction,
 } from "~src/interpreter/controlItems/instructions";
 
 export type ControlItem = CNodeP | Instruction;
@@ -18,6 +19,14 @@ export class Control extends Stack<ControlItem, Control> {
   canAvoidEnvInstr(): boolean {
     return true;
   }
+
+  getTearDowns(): StackFrameTearDownInstruction[] {
+    return this.storage.filter(
+      (item): item is StackFrameTearDownInstruction =>
+        isInstruction(item) && item.type === InstructionType.STACKFRAMETEARDOWNINSTRUCTION
+    );
+  }
+
   getNumEnvDependentItems(): number {
     return this.numEnvDependentItems;
   }
@@ -31,7 +40,7 @@ export class Control extends Stack<ControlItem, Control> {
   }
 
   copy(): Control {
-    return new Control();
+    return this;
   }
 
   toString(): string {

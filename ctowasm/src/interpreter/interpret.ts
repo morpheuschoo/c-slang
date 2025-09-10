@@ -8,12 +8,15 @@ import ModuleRepository, {
   ModulesGlobalConfig,
 } from "~src/modules";
 import { defaultPosition } from "./utils/constantsUtils";
+import { StackFrame } from "./stackFrame";
+import { InstructionType, StackFrameTearDownInstruction } from "./controlItems";
 
 export interface CContext {
   astRoot: CAstRootP;
   control: Control;
   stash: Stash;
   memory: Memory;
+  stackFrames: StackFrame[];
   step: number;
 }
 
@@ -28,7 +31,7 @@ export class Interpreter {
     astRootNode: CAstRootP,
     includedModules: ModuleName[],
     moduleConfig: ModulesGlobalConfig,
-    sourceCode: string,
+    sourceCode: string
   ) {
     this.astRootNode = astRootNode;
     this.runtimeStack = []; // CURRENTLY NOT USED WITH HOW INTERPRETER IS SETUP
@@ -43,7 +46,7 @@ export class Interpreter {
     Runtime.sourceCode = this.sourceCode;
 
     const mainFunction = Runtime.astRootP.functions.find(
-      (x) => x.name === "main",
+      (x) => x.name === "main"
     );
 
     if (!mainFunction) {
@@ -74,13 +77,13 @@ export class Interpreter {
           args: [],
           position: this.astRootNode.position,
         },
-      ]),
+      ])
     );
 
     Runtime.modules = new ModuleRepository(
       initialRuntime.cloneMemory().memory,
       new WebAssembly.Table({ element: "anyfunc", initial: 2 }),
-      this.moduleConfig,
+      this.moduleConfig
     );
 
     for (const moduleName of Runtime.includedModules) {
@@ -112,7 +115,29 @@ export class Interpreter {
     }
 
     // setup environment for visualizer
-    
+    const tearDowns: StackFrameTearDownInstruction[] = currentRuntime
+      .getControl()
+      .getTearDowns()
+      .reverse();
+    let lastBasePointer: number =
+      currentRuntime.getPointers().basePointer.value;
+    const stackFrames: StackFrame[] = [];
+
+    for (let i = 0; i < tearDowns.length; i++) {
+      if (tearDowns[i].type !== InstructionType.STACKFRAMETEARDOWNINSTRUCTION) {
+        throw new Error("Expected a StackFrameTearDown Instruction");
+      }
+
+      stackFrames.push(
+        new StackFrame(
+          tearDowns[i].functionName,
+          lastBasePointer,
+          currentRuntime.getMemory()
+        )
+      );
+
+      lastBasePointer = tearDowns[i].basePointer;
+    }
 
     return {
       astRoot: this.astRootNode,
@@ -120,6 +145,7 @@ export class Interpreter {
       stash: currentRuntime.getStash(),
       memory: currentRuntime.getMemory(),
       step: currStep,
+      stackFrames: stackFrames,
     };
   }
 
@@ -128,7 +154,7 @@ export class Interpreter {
     Runtime.includedModules = this.includedModules;
 
     const mainFunction = Runtime.astRootP.functions.find(
-      (x) => x.name === "main",
+      (x) => x.name === "main"
     );
 
     if (!mainFunction) {
@@ -161,13 +187,13 @@ export class Interpreter {
           args: [],
           position: this.astRootNode.position,
         },
-      ]),
+      ])
     );
 
     Runtime.modules = new ModuleRepository(
       initialRuntime.cloneMemory().memory,
       new WebAssembly.Table({ element: "anyfunc", initial: 100 }),
-      this.moduleConfig,
+      this.moduleConfig
     );
 
     for (const moduleName of Runtime.includedModules) {

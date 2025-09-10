@@ -102,25 +102,27 @@ function debugPrintMemoryMap(): void {
   map.forEach((entry, name) => {
     // Check if this is a scoped name (contains a dot)
     // const scopeMatch = name.name.match(/^(.+)\.(.+)$/);
-
-    if (entry.isGlobal) {
-      globalEntries.push([name.name, entry]);
-    } else if (name.name && name.scope) {
-      const functionName = name.scope;
-      const varName = name.name;
-
+    const scopeMatch = name.split("::");
+    const varName = scopeMatch[1];
+    const functionName = scopeMatch[0];
+    
+    if (entry.isGlobal && varName) {
+      globalEntries.push([varName, entry]);
+    } else if (varName && functionName) {
       if (!localEntriesByFunction[functionName]) {
         localEntriesByFunction[functionName] = [];
       }
 
       // Store with the real variable name (without scope prefix)
       localEntriesByFunction[functionName].push([varName, entry]);
-    } else {
+    } else if(varName) {
       // Local variable without proper scope - fallback
       if (!localEntriesByFunction["unknown"]) {
         localEntriesByFunction["unknown"] = [];
       }
-      localEntriesByFunction["unknown"].push([name.name, entry]);
+      localEntriesByFunction["unknown"].push([varName, entry]);
+    } else {
+      throw new Error("Error parsing MemoryAddressKey")
     }
   });
 

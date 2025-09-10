@@ -61,9 +61,8 @@ export class Memory {
     dataSegmentByteStr: string, // The string of bytes (each byte is in the form "\\XX" where X is a digit in base-16) to initialize the data segment with, determined by processing initializers for data segment variables.
     dataSegmentSizeInBytes: number,
     heapBuffer?: number,
-    stackBuffer?: number,
+    stackBuffer?: number
   ) {
-    console.log(Memory.cnt + 1);
     Memory.cnt++;
     this.dataSegmentSizeInBytes = dataSegmentSizeInBytes;
     this.dataSegmentByteStr = dataSegmentByteStr;
@@ -84,15 +83,15 @@ export class Memory {
        */
       stackPointer: new WebAssembly.Global(
         { value: WASM_ADDR_TYPE, mutable: true },
-        WASM_PAGE_IN_HEX * initialPages,
+        WASM_PAGE_IN_HEX * initialPages
       ),
       basePointer: new WebAssembly.Global(
         { value: WASM_ADDR_TYPE, mutable: true },
-        WASM_PAGE_IN_HEX * initialPages,
+        WASM_PAGE_IN_HEX * initialPages
       ),
       heapPointer: new WebAssembly.Global(
         { value: WASM_ADDR_TYPE, mutable: true },
-        dataSegmentSizeInBytes + 4,
+        dataSegmentSizeInBytes + 4
       ),
     };
 
@@ -113,7 +112,7 @@ export class Memory {
 
     if (memoryView.length !== moduleView.length) {
       throw new Error(
-        `Memory size mismatch: interpreter memory length (${memoryView.length}) does not match module memory length (${moduleView.length})`,
+        `Memory size mismatch: interpreter memory length (${memoryView.length}) does not match module memory length (${moduleView.length})`
       );
     }
 
@@ -138,7 +137,7 @@ export class Memory {
 
     if (memoryView.byteLength !== moduleView.byteLength) {
       throw new Error(
-        `Memory size mismatch: interpreter memory length (${memoryView.length}) does not match module memory length (${moduleView.length})`,
+        `Memory size mismatch: interpreter memory length (${memoryView.length}) does not match module memory length (${moduleView.length})`
       );
     }
 
@@ -159,22 +158,22 @@ export class Memory {
   setPointers(stackPointer: number, basePointer: number, heapPointer: number) {
     if (heapPointer > stackPointer) {
       throw new Error(
-        "Segmentation fault: Heap pointer clashed with stack pointer",
+        "Segmentation fault: Heap pointer clashed with stack pointer"
       );
     }
 
     this.sharedWasmGlobalVariables = {
       stackPointer: new WebAssembly.Global(
         { value: WASM_ADDR_TYPE, mutable: true },
-        stackPointer,
+        stackPointer
       ),
       basePointer: new WebAssembly.Global(
         { value: WASM_ADDR_TYPE, mutable: true },
-        basePointer,
+        basePointer
       ),
       heapPointer: new WebAssembly.Global(
         { value: WASM_ADDR_TYPE, mutable: true },
-        heapPointer,
+        heapPointer
       ),
     };
   }
@@ -183,7 +182,7 @@ export class Memory {
     sizeOfParams: number,
     sizeOfLocals: number,
     sizeOfReturn: number,
-    parameters: StashItem[],
+    parameters: StashItem[]
   ): Memory {
     const newMemory = this.clone();
     const totalSize = sizeOfParams + sizeOfLocals + sizeOfReturn;
@@ -194,7 +193,7 @@ export class Memory {
     newMemory.setPointers(
       SP,
       BP,
-      this.sharedWasmGlobalVariables.heapPointer.value,
+      this.sharedWasmGlobalVariables.heapPointer.value
     );
 
     let offset = 0;
@@ -206,7 +205,7 @@ export class Memory {
           writeObject.type !== "MemoryAddress"
         ) {
           throw new Error(
-            `Did not expect ${writeObject.type} in stackFrameSetup`,
+            `Did not expect ${writeObject.type} in stackFrameSetup`
           );
         }
 
@@ -232,7 +231,7 @@ export class Memory {
           dataType: dataType,
           value: writeValue,
         };
-      },
+      }
     );
 
     return newMemory.write(writeParameters);
@@ -243,7 +242,7 @@ export class Memory {
     newMemory.setPointers(
       stackPointer,
       basePointer,
-      this.sharedWasmGlobalVariables.heapPointer.value,
+      this.sharedWasmGlobalVariables.heapPointer.value
     );
 
     return newMemory;
@@ -274,7 +273,7 @@ export class Memory {
         i <
         Math.min(
           byteArray.length,
-          this.memory.buffer.byteLength - Number(value.address),
+          this.memory.buffer.byteLength - Number(value.address)
         );
         i++
       ) {

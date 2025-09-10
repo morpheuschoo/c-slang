@@ -533,7 +533,7 @@ export const InstructionEvaluator: {
 
     let foundCaseMark = false;
 
-    // if true jump to the respective case mark
+    // if true jump to the respective case markpo
     while (!currRuntime.isControlEmpty()) {
       const [item, newRuntime] = currRuntime.popNode();
       currRuntime = newRuntime;

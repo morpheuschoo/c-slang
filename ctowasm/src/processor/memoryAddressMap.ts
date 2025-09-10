@@ -1,31 +1,40 @@
 import { SymbolTable, VariableSymbolEntry } from "~src/processor/symbolTable";
+import { DataType } from "../parser/c-ast/dataTypes";
 
 export interface MemoryAddressEntry {
   name: string;
   offset: number;
-  absoluteAddress?: number;
   isGlobal: boolean;
   size: number;
+  dataType: DataType;
+  value?: number;
+  absoluteAddress?: number;
 }
 
-export interface MemoryAddressKey {
+export class MemoryAddressKey {
   name: string;
   scope: string;
   offset: number;
+
+  constructor(name: string, scope: string, offset: number) {
+    this.name = name;
+    this.scope = scope;
+    this.offset = offset;
+  }
+
+  public toString(): string {
+    return `${this.scope}::${this.name}::${this.offset.toString()}`;
+  }
 }
 
 export class MemoryAddressMap {
-  private addressMap: Map<MemoryAddressKey, MemoryAddressEntry> = new Map();
+  private addressMap: Map<string, MemoryAddressEntry> = new Map();
   private scopeChain: string[] = [];
 
   addVariable(name: string, entry: MemoryAddressEntry): void {
     const scopedName = this.getScopedName(name);
     this.addressMap.set(
-      {
-        name: name,
-        scope: scopedName,
-        offset: entry.offset,
-      },
+      new MemoryAddressKey(name, scopedName, entry.offset).toString(),
       entry
     );
   }
@@ -90,6 +99,7 @@ export class MemoryAddressMap {
             offset: varEntry.offset,
             isGlobal: entry.type === "dataSegmentVariable",
             size: getDataTypeSize(varEntry.dataType),
+            dataType: varEntry.dataType,
           });
         }
       }
@@ -115,7 +125,12 @@ export class MemoryAddressMap {
     // Convert the Map to an array for easier logging
     const entries: Array<[string, any]> = [];
     this.addressMap.forEach((entry, name) => {
-      entries.push([name.name, entry]);
+      const parts = name.split("::");
+      if(!parts[1]) {
+        throw new Error("Cannot parse MemoryAddressKey");
+      }
+      
+      entries.push([parts[1], entry]);
     });
 
     // Sort by address for cleaner output
@@ -131,7 +146,7 @@ export class MemoryAddressMap {
     console.log("========================");
   }
 
-  getAddressMap(): Map<MemoryAddressKey, MemoryAddressEntry> {
+  getAddressMap(): Map<string, MemoryAddressEntry> {
     return this.addressMap;
   }
 }

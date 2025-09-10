@@ -71,7 +71,8 @@ export function processLocalDeclaration(
         name: declaration.name,
         offset: varEntry.offset,
         isGlobal: varEntry.type === "dataSegmentVariable",
-        size: getDataTypeSize(declaration.dataType)
+        size: getDataTypeSize(declaration.dataType),
+        dataType: declaration.dataType
       });
     }
 

@@ -243,7 +243,8 @@ export class SymbolTable {
       name,
       offset: varEntry.offset,
       isGlobal: varEntry.type === "dataSegmentVariable",
-      size: getDataTypeSize(dataType)
+      size: getDataTypeSize(dataType),
+      dataType: varEntry.dataType,
     });
 
     return entry;

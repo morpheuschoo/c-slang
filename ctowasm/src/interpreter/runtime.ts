@@ -41,7 +41,7 @@ export class Runtime {
 
       this.memory = new Memory(
         Runtime.astRootP.dataSegmentByteStr,
-        Runtime.astRootP.dataSegmentSizeInBytes,
+        Runtime.astRootP.dataSegmentSizeInBytes
       );
     } else {
       this.memory = memory;
@@ -77,7 +77,7 @@ export class Runtime {
     if (InstructionEvaluator[instruction.type]) {
       const result = InstructionEvaluator[instruction.type](
         this,
-        instruction as any,
+        instruction as any
       );
       return result;
     } else {
@@ -116,13 +116,13 @@ export class Runtime {
           value: writeValue,
           dataType: pair.dataType,
         };
-      },
+      }
     );
 
     return new Runtime(
       this.control,
       this.stash,
-      this.memory.write(memoryWriteInterfaceArr),
+      this.memory.write(memoryWriteInterfaceArr)
     );
   }
 
@@ -136,13 +136,13 @@ export class Runtime {
     sizeOfParams: number,
     sizeOfLocals: number,
     sizeOfReturn: number,
-    parameters: StashItem[],
+    parameters: StashItem[]
   ): Runtime {
     const newMemory = this.memory.stackFrameSetup(
       sizeOfParams,
       sizeOfLocals,
       sizeOfReturn,
-      parameters,
+      parameters
     );
 
     return new Runtime(this.control, this.stash, newMemory);
@@ -164,7 +164,7 @@ export class Runtime {
     return new Runtime(
       this.control.concat([...item].reverse()),
       this.stash,
-      this.memory,
+      this.memory
     );
   }
 
@@ -172,7 +172,7 @@ export class Runtime {
     return new Runtime(
       this.control.concat([...node].reverse()),
       this.stash,
-      this.memory,
+      this.memory
     );
   }
 
@@ -180,7 +180,7 @@ export class Runtime {
     return new Runtime(
       this.control.concat([...instruction].reverse()),
       this.stash,
-      this.memory,
+      this.memory
     );
   }
 
