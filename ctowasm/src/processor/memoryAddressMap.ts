@@ -8,112 +8,128 @@ export interface MemoryAddressEntry {
   size: number;
 }
 
+export interface MemoryAddressKey {
+  name: string;
+  offset: number;
+}
+
 export class MemoryAddressMap {
-  private addressMap: Map<string, MemoryAddressEntry> = new Map();
+  private addressMap: Map<MemoryAddressKey, MemoryAddressEntry> = new Map();
   private scopeChain: string[] = [];
-  
+
   addVariable(name: string, entry: MemoryAddressEntry): void {
     const scopedName = this.getScopedName(name);
-    this.addressMap.set(scopedName, entry);
+    this.addressMap.set(
+      {
+        name: scopedName,
+        offset: entry.offset,
+      },
+      entry
+    );
   }
-  
-  getVariableAddress(name: string): MemoryAddressEntry | undefined {
-    const scopedName = this.getScopedName(name);
-    if (this.addressMap.has(scopedName)) {
-      return this.addressMap.get(scopedName);
-    }
-    
-    if (this.addressMap.has(name)) {
-      return this.addressMap.get(name);
-    }
-    
-    return undefined;
-  }
-  
-  getEffectiveAddress(name: string): number | undefined {
-    const entry = this.getVariableAddress(name);
-    if (!entry) return undefined;
-    
-    return entry.absoluteAddress !== undefined ? entry.absoluteAddress : entry.offset;
-  }
-  
+
+  // getVariableAddress(name: string): MemoryAddressEntry | undefined {
+  //   const scopedName = this.getScopedName(name);
+  //   if (this.addressMap.has(scopedName)) {
+  //     return this.addressMap.get(scopedName);
+  //   }
+
+  //   if (this.addressMap.has(name)) {
+  //     return this.addressMap.get(name);
+  //   }
+
+  //   return undefined;
+  // }
+
+  // getEffectiveAddress(name: string): number | undefined {
+  //   const entry = this.getVariableAddress(name);
+  //   if (!entry) return undefined;
+
+  //   return entry.absoluteAddress !== undefined
+  //     ? entry.absoluteAddress
+  //     : entry.offset;
+  // }
+
   pushScope(scopeName: string): void {
     this.scopeChain.push(scopeName);
   }
-  
+
   popScope(): string | undefined {
     return this.scopeChain.pop();
   }
-  
+
   private getScopedName(name: string): string {
     if (this.scopeChain.length === 0) {
       return name;
     }
-    
-    return `${this.scopeChain.join('.')}.${name}`;
+
+    return `${this.scopeChain.join(".")}.${name}`;
   }
-  
+
   static buildFromSymbolTable(
     symbolTable: SymbolTable,
     getDataTypeSize: (dataType: any) => number
   ): MemoryAddressMap {
     const map = new MemoryAddressMap();
-    
+
     function processSymbolTable(table: SymbolTable, isGlobal: boolean): void {
       if (!isGlobal) {
         map.pushScope(getFunctionNameFromSymbolTable(table));
       }
-      
+
       for (const [name, entry] of Object.entries(table.symbols)) {
-        if (entry.type === "localVariable" || entry.type === "dataSegmentVariable") {
+        if (
+          entry.type === "localVariable" ||
+          entry.type === "dataSegmentVariable"
+        ) {
           const varEntry = entry as VariableSymbolEntry;
           map.addVariable(name, {
             name,
             offset: varEntry.offset,
             isGlobal: entry.type === "dataSegmentVariable",
-            size: getDataTypeSize(varEntry.dataType)
+            size: getDataTypeSize(varEntry.dataType),
           });
         }
       }
-      
+
       if (!isGlobal) {
         map.popScope();
       }
     }
-    
+
     function getFunctionNameFromSymbolTable(table: SymbolTable): string {
       return "function_" + Math.random().toString(36).substring(2, 9);
     }
-    
+
     processSymbolTable(getRootSymbolTable(symbolTable), true);
     processFunctionScopes(symbolTable, processSymbolTable);
-    
+
     return map;
   }
 
   public debugPrint(): void {
     console.log("=== Memory Address Map ===");
-    
+
     // Convert the Map to an array for easier logging
     const entries: Array<[string, any]> = [];
     this.addressMap.forEach((entry, name) => {
-      entries.push([name, entry]);
+      entries.push([name.name, entry]);
     });
-    
+
     // Sort by address for cleaner output
     entries.sort((a, b) => a[1].offset - b[1].offset);
-    
+
     entries.forEach(([name, entry]) => {
       console.log(
         `${name.padEnd(20)} | ${entry.isGlobal ? "Global" : "Local"} | ` +
-        `Offset: ${entry.offset} | Size: ${entry.size} bytes`
+          `Offset: ${entry.offset} | Size: ${entry.size} bytes`
       );
     });
-    
+
     console.log("========================");
   }
 
-  getAddressMap(): Map<string, MemoryAddressEntry> {
+  getAddressMap(): Map<MemoryAddressKey, MemoryAddressEntry> {
     return this.addressMap;
   }
 }
@@ -127,7 +143,7 @@ function getRootSymbolTable(symbolTable: SymbolTable): SymbolTable {
 }
 
 function processFunctionScopes(
-  symbolTable: SymbolTable, 
+  symbolTable: SymbolTable,
   processFn: (table: SymbolTable, isGlobal: boolean) => void
 ): void {
   const functionNames: string[] = [];
@@ -136,14 +152,14 @@ function processFunctionScopes(
       functionNames.push(name);
     }
   }
-  
+
   console.log(`Found ${functionNames.length} functions to process`);
-  
+
   for (const entry of symbolTable.functionTable) {
     if (entry.isDefined) {
       const functionName = entry.functionName;
       console.log(`Processing local variables for function: ${functionName}`);
-      
+
       processFn(symbolTable, false);
     }
   }

@@ -30,10 +30,10 @@ class MemoryManager {
     );
   }
 
-  public getVariableAddress(name: string): number | undefined {
-    const entry = this.addressMap.getVariableAddress(name);
-    return entry?.offset;
-  }
+  // public getVariableAddress(name: string): number | undefined {
+  //   const entry = this.addressMap.getVariableAddress(name);
+  //   return entry?.offset;
+  // }
 
   public getAddressMap(): MemoryAddressMap {
     return this.addressMap;
