@@ -3,8 +3,8 @@ import { memoryManager } from "../processor/memoryManager";
 import { Memory } from "./memory";
 
 export class StackFrame {
-  private functionName: string;
-  private variablesMap: Map<string, MemoryAddressEntry> = new Map();
+  public functionName: string;
+  public variablesMap: Map<string, MemoryAddressEntry> = new Map();
 
   constructor(functionName: string, basePointer: number, memory: Memory) {
     this.functionName = functionName;
