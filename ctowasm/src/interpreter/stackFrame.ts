@@ -1,3 +1,4 @@
+import { ScalarCDataType } from "../common/types";
 import { MemoryAddressEntry } from "../processor/memoryAddressMap";
 import { memoryManager } from "../processor/memoryManager";
 import { Memory } from "./memory";
@@ -17,6 +18,16 @@ export class StackFrame {
       const varName = parts[1];
       const scope = parts[0];
 
+      let targetDataType : ScalarCDataType = "signed int";
+
+      if (entry.dataType.type == "primary") {
+        targetDataType = entry.dataType.primaryDataType
+      } else if(entry.dataType.type == "pointer") {
+        targetDataType = "signed int"
+      } else {
+        throw new Error("Cannot load: " + entry.dataType + " from memory");
+      }
+
       if (scope === functionName) {
         const absoluteAddress = entry.offset + basePointer;
         const value = memory.load(
@@ -25,18 +36,23 @@ export class StackFrame {
             value: BigInt(absoluteAddress),
             hexValue: absoluteAddress.toString(16),
           },
-          "signed int"
+          targetDataType
         );
-        if (value.type !== "IntegerConstant") {
-          throw new Error("Stackframe: Not implemented yet");
+        let targetValue = 0;
+
+        if (value.type == "FunctionTableIndex") {
+          targetValue = Number(value.index.value)
+        } else {
+          targetValue = Number(value.value)
         }
 
         this.variablesMap.set(varName, {
           ...entry,
           absoluteAddress,
-          value: Number(value.value),
+          value: Number(targetValue),
         });
       }
+
     });
   }
 }
