@@ -391,6 +391,7 @@ export const NodeEvaluator: {
           calledFunction.functionName,
           pointers.basePointer.value,
           pointers.stackPointer.value,
+          node.functionDetails.sizeOfReturn,
           targetPosition
         ),
       ]);

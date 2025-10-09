@@ -6,11 +6,25 @@ import { Memory } from "./memory";
 export class StackFrame {
   public functionName: string;
   public variablesMap: Map<string, MemoryAddressEntry> = new Map();
+  public basePointer: number;
+  public stackPointer: number;
+  public sizeOfReturn: number;
 
-  constructor(functionName: string, basePointer: number, memory: Memory) {
+  constructor(
+    functionName: string, 
+    basePointer: number,
+    stackPointer: number,
+    sizeOfReturn: number,
+    memory: Memory,
+  ) {
     this.functionName = functionName;
 
     const addressMap = memoryManager.getAddressMap();
+    this.basePointer = basePointer;
+    this.stackPointer = stackPointer;
+    this.sizeOfReturn = sizeOfReturn;
+    console.log("STACK FRAME CREATED", functionName, basePointer, sizeOfReturn, stackPointer)
+
     const map = addressMap.getAddressMap();
 
     map.forEach((entry, name) => {

@@ -114,30 +114,41 @@ export class Interpreter {
       }
     }
 
-    // setup environment for visualizer
+    
+    // setup stack frames for visualizer
     const tearDowns: StackFrameTearDownInstruction[] = currentRuntime
-      .getControl()
-      .getTearDowns()
-      .reverse();
+    .getControl()
+    .getTearDowns()
+    .reverse();
+    
+    // TODO: Do This in a smarter way
     let lastBasePointer: number =
-      currentRuntime.getPointers().basePointer.value;
+    currentRuntime.getPointers().basePointer.value;
+    let lastStackPointer: number = 
+    currentRuntime.getPointers().stackPointer.value;
+    
     const stackFrames: StackFrame[] = [];
-
+    
     for (let i = 0; i < tearDowns.length; i++) {
       if (tearDowns[i].type !== InstructionType.STACKFRAMETEARDOWNINSTRUCTION) {
         throw new Error("Expected a StackFrameTearDown Instruction");
       }
-
+      
       stackFrames.push(
         new StackFrame(
           tearDowns[i].functionName,
           lastBasePointer,
-          currentRuntime.getMemory()
+          lastStackPointer,
+          tearDowns[i].sizeOfReturn,
+          currentRuntime.getMemory(),
         )
       );
-
+      
       lastBasePointer = tearDowns[i].basePointer;
+      lastStackPointer = tearDowns[i].stackPointer;
     }
+    console.log("CONTROL ITEMS", currentRuntime.getControl())
+    console.log("STACK FRAMES", stackFrames);
 
     return {
       astRoot: this.astRootNode,

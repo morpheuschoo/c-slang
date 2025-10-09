@@ -179,18 +179,21 @@ export interface StackFrameTearDownInstruction extends BaseInstruction {
   type: InstructionType.STACKFRAMETEARDOWNINSTRUCTION;
   basePointer: number;
   stackPointer: number;
+  sizeOfReturn: number;
 }
 
 export const stackFrameTearDownInstruction = (
   functionName: string,
   basePointer: number,
   stackPointer: number,
+  sizeOfReturn: number,
   position: Position,
 ): StackFrameTearDownInstruction => ({
   functionName: functionName,
   type: InstructionType.STACKFRAMETEARDOWNINSTRUCTION,
   basePointer: basePointer,
   stackPointer: stackPointer,
+  sizeOfReturn: sizeOfReturn,
   position,
 });
 
