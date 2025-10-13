@@ -21,10 +21,17 @@ export class Control extends Stack<ControlItem, Control> {
   }
 
   getTearDowns(): StackFrameTearDownInstruction[] {
-    return this.storage.filter(
+    const res = this.storage.filter(
       (item): item is StackFrameTearDownInstruction =>
         isInstruction(item) && item.type === InstructionType.STACKFRAMETEARDOWNINSTRUCTION
     );
+
+    // If there is a call instruction being executed, pop the most recent stack frame
+    if (this.storage.filter((item) => item.type === InstructionType.CALLINSTRUCTION).length > 0) {
+      res.pop();
+    }
+
+    return res;
   }
 
   getNumEnvDependentItems(): number {

@@ -147,8 +147,6 @@ export class Interpreter {
       lastBasePointer = tearDowns[i].basePointer;
       lastStackPointer = tearDowns[i].stackPointer;
     }
-    console.log("CONTROL ITEMS", currentRuntime.getControl())
-    console.log("STACK FRAMES", stackFrames);
 
     return {
       astRoot: this.astRootNode,

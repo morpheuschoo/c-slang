@@ -23,7 +23,6 @@ export class StackFrame {
     this.basePointer = basePointer;
     this.stackPointer = stackPointer;
     this.sizeOfReturn = sizeOfReturn;
-    console.log("STACK FRAME CREATED", functionName, basePointer, sizeOfReturn, stackPointer)
 
     const map = addressMap.getAddressMap();
 
@@ -53,7 +52,6 @@ export class StackFrame {
           targetDataType
         );
         let targetValue = 0;
-
         if (value.type == "FunctionTableIndex") {
           targetValue = Number(value.index.value)
         } else {
