@@ -54,8 +54,6 @@ export class Memory {
 
   sharedWasmGlobalVariables: SharedWasmGlobalVariables;
 
-  static cnt = 0;
-
   // Constructor to initiate the first runtime object
   constructor(
     dataSegmentByteStr: string, // The string of bytes (each byte is in the form "\\XX" where X is a digit in base-16) to initialize the data segment with, determined by processing initializers for data segment variables.
@@ -63,7 +61,6 @@ export class Memory {
     heapBuffer?: number,
     stackBuffer?: number
   ) {
-    Memory.cnt++;
     this.dataSegmentSizeInBytes = dataSegmentSizeInBytes;
     this.dataSegmentByteStr = dataSegmentByteStr;
     this.heapBuffer = heapBuffer ?? 1 * KB;
@@ -153,6 +150,17 @@ export class Memory {
       Runtime.modules.sharedWasmGlobalVariables.stackPointer.value;
 
     return resultMemory;
+  }
+
+  getPointers(): {stackPointer: number, basePointer: number, heapPointer: number, dataSegmentSizeInBytes: number} {
+    const pointers = this.sharedWasmGlobalVariables;
+
+    return {
+      stackPointer: pointers.stackPointer.value,
+      basePointer: pointers.basePointer.value,
+      heapPointer: pointers.heapPointer.value,
+      dataSegmentSizeInBytes: this.dataSegmentSizeInBytes,
+    }
   }
 
   setPointers(stackPointer: number, basePointer: number, heapPointer: number) {
