@@ -11,7 +11,7 @@ export class StackFrame {
   public sizeOfReturn: number;
 
   constructor(
-    functionName: string, 
+    functionName: string,
     basePointer: number,
     stackPointer: number,
     sizeOfReturn: number,
@@ -41,7 +41,30 @@ export class StackFrame {
         throw new Error("Cannot load: " + entry.dataType + " from memory");
       }
 
-      if (scope === functionName) {
+      if (entry.isGlobal && functionName === "global") {
+        const absoluteAddress = entry.offset;
+        const value = memory.load(
+          {
+            type: "MemoryAddress",
+            value: BigInt(absoluteAddress),
+            hexValue: absoluteAddress.toString(16),
+          },
+          targetDataType
+        );
+        let targetValue = 0;
+
+        if (value.type === "FunctionTableIndex") {
+          targetValue = Number(value.index.value);
+        } else {
+          targetValue = Number(value.value);
+        }
+
+        this.variablesMap.set(varName, {
+          ...entry,
+          absoluteAddress,
+          value: targetValue,
+        });
+      } if (scope === functionName) {
         const absoluteAddress = entry.offset + basePointer;
         const value = memory.load(
           {

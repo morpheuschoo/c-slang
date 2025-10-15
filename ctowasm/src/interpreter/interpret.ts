@@ -114,26 +114,26 @@ export class Interpreter {
       }
     }
 
-    
+
     // setup stack frames for visualizer
     const tearDowns: StackFrameTearDownInstruction[] = currentRuntime
     .getControl()
     .getTearDowns()
     .reverse();
-    
+
     // TODO: Do This in a smarter way
     let lastBasePointer: number =
     currentRuntime.getPointers().basePointer.value;
-    let lastStackPointer: number = 
+    let lastStackPointer: number =
     currentRuntime.getPointers().stackPointer.value;
-    
+
     const stackFrames: StackFrame[] = [];
-    
+
     for (let i = 0; i < tearDowns.length; i++) {
       if (tearDowns[i].type !== InstructionType.STACKFRAMETEARDOWNINSTRUCTION) {
         throw new Error("Expected a StackFrameTearDown Instruction");
       }
-      
+
       stackFrames.push(
         new StackFrame(
           tearDowns[i].functionName,
@@ -143,10 +143,20 @@ export class Interpreter {
           currentRuntime.getMemory(),
         )
       );
-      
+
       lastBasePointer = tearDowns[i].basePointer;
       lastStackPointer = tearDowns[i].stackPointer;
     }
+
+    stackFrames.push(
+      new StackFrame(
+        "global",
+        0,
+        0,
+        0,
+        currentRuntime.getMemory()
+      )
+    )
 
     return {
       astRoot: this.astRootNode,
