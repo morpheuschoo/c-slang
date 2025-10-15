@@ -71,6 +71,7 @@ export default function processExpression(
             statements: memoryStoreStatements,
             expr: memoryLoadExpressions[0],
             dataType: memoryLoadExpressions[0].dataType,
+            position: memoryLoadExpressions[0].position,
           },
           ...memoryLoadExpressions.slice(1),
         ],
@@ -131,7 +132,9 @@ export default function processExpression(
               ),
             ), // void pointer already checked for
             dataType: rightExpr.dataType as IntegerDataType, // datatype is confirmed by determineDataTypeOfBinaryExpression
+            position: rightExpr.position,
           },
+          position: rightExpr.position,
           dataType: rightExpr.dataType,
           operandTargetDataType: rightExpr.dataType,
         };
@@ -151,7 +154,9 @@ export default function processExpression(
               ),
             ),
             dataType: leftExpr.dataType as IntegerDataType, // datatype is confirmed by determineDataTypeOfBinaryExpression
+            position: rightExpr.position,
           },
+          position: leftExpr.position,
           dataType: leftExpr.dataType,
           operandTargetDataType: leftExpr.dataType,
         };
@@ -178,6 +183,7 @@ export default function processExpression(
                     ? "pointer"
                     : binaryExpressionDataType.primaryDataType,
                 operandTargetDataType: "pointer",
+                position: leftExpr.position,
               },
               operator: "/",
               rightExpr: {
@@ -188,9 +194,11 @@ export default function processExpression(
                   ),
                 ),
                 dataType: PTRDIFF_T,
+                position: rightExpr.position,
               },
               dataType: PTRDIFF_T,
               operandTargetDataType: PTRDIFF_T,
+              position: expr.position,
             },
           ],
         };
@@ -212,6 +220,7 @@ export default function processExpression(
               operandTargetDataType.type === "pointer"
                 ? "pointer"
                 : operandTargetDataType.primaryDataType,
+            position: expr.position,
           },
         ],
       };
@@ -250,8 +259,10 @@ export default function processExpression(
             subtype: "load",
             offset: createMemoryOffsetIntegerConstant(currOffset),
             dataType: "pointer",
+            position: expr.position,
           },
           dataType: returnObj.dataType,
+          position: expr.position,
         });
         currOffset += getSizeOfScalarDataType(returnObj.dataType);
       });
@@ -266,6 +277,7 @@ export default function processExpression(
             statements: [functionCallStatement],
             dataType: returnObjectMemoryLoads[0].dataType,
             expr: returnObjectMemoryLoads[0],
+            position: expr.position,
           },
           ...returnObjectMemoryLoads.slice(1),
         ],
@@ -298,6 +310,7 @@ export default function processExpression(
               type: "IntegerConstant",
               value: symbolEntry.value,
               dataType: symbolEntry.dataType.primaryDataType,
+              position: expr.position,
             },
           ],
         };
@@ -315,6 +328,7 @@ export default function processExpression(
                   : "LocalAddress",
               offset: createMemoryOffsetIntegerConstant(symbolEntry.offset),
               dataType: "pointer",
+              position: expr.position,
             },
           ],
         };
@@ -333,8 +347,10 @@ export default function processExpression(
                 symbolEntry.offset + primaryDataObject.offset,
               ),
               dataType: "pointer",
+              position: expr.position,
             },
             dataType: primaryDataObject.dataType,
+            position: expr.position,
           })),
         };
       }
@@ -376,6 +392,7 @@ export default function processExpression(
                   : "LocalAddress",
               offset: createMemoryOffsetIntegerConstant(symbolEntry.offset),
               dataType: "pointer",
+              position: expr.position,
             },
           ],
         };
@@ -422,11 +439,13 @@ export default function processExpression(
                 type: "DynamicAddress",
                 address: derefedExpression.exprs[0],
                 dataType: "pointer",
+                position: derefedExpression.exprs[0].position,
               },
               dataType:
                 derefedExpressionDataType.pointeeType.type === "pointer"
                   ? "pointer"
                   : derefedExpressionDataType.pointeeType.primaryDataType,
+              position: expr.position,
             },
           ],
         };
@@ -439,6 +458,7 @@ export default function processExpression(
               type: "DynamicAddress",
               address: derefedExpression.exprs[0],
               dataType: "pointer",
+              position: derefedExpression.exprs[0].position,
             },
           ],
         };
@@ -461,10 +481,13 @@ export default function processExpression(
                 operator: "+",
                 operandTargetDataType: "pointer",
                 dataType: "pointer",
+                position: expr.position,
               },
               dataType: "pointer",
+              position: expr.position,
             },
             dataType: primaryDataObject.dataType,
+            position: expr.position,
           })),
         };
       }
@@ -500,6 +523,7 @@ export default function processExpression(
             type: "IntegerConstant",
             value: BigInt(getDataTypeSize(dataTypeToGetSizeOf)),
             dataType: SIZE_T,
+            position: expr.position,
           },
         ],
       };
@@ -555,8 +579,10 @@ export default function processExpression(
                   type: "DynamicAddress",
                   address: memoryLoadExpr.address,
                   dataType: "pointer",
+                  position: memoryLoadExpr.position,
                 },
                 dataType: "pointer",
+                position: memoryLoadExpr.position,
               },
             ],
           };
@@ -572,6 +598,8 @@ export default function processExpression(
               type: "DynamicAddress",
               address: (processedExpr.exprs[fieldIndex] as MemoryLoad).address,
               dataType: "pointer",
+              position: (processedExpr.exprs[fieldIndex] as MemoryLoad)
+                .position,
             },
           ],
         };
@@ -595,6 +623,7 @@ export default function processExpression(
               statements: processedExpr.exprs[0].statements,
               expr: loadExpr,
               dataType: loadExpr.dataType,
+              position: loadExpr.position,
             });
             totalBytesLoaded += getSizeOfScalarDataType(loadExpr.dataType);
           } else {
@@ -651,6 +680,7 @@ export default function processExpression(
             statements: precedingExpressionsAsStatements,
             expr: processedLastExpr.exprs[0],
             dataType: processedLastExpr.exprs[0].dataType,
+            position: processedLastExpr.exprs[0].position,
           },
           ...processedLastExpr.exprs.slice(1),
         ],
@@ -704,6 +734,7 @@ export default function processExpression(
               : resultDataType.type === "pointer"
               ? "pointer"
               : truePrimaryExpr.dataType,
+          position: truePrimaryExpr.position,
         })),
       };
     } else if (expr.type === "StringLiteral") {
@@ -722,6 +753,7 @@ export default function processExpression(
             type: "DataSegmentAddress",
             offset: createMemoryOffsetIntegerConstant(dataSegmentOffset),
             dataType: "pointer",
+            position: expr.position,
           },
         ],
       };

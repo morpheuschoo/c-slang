@@ -201,6 +201,10 @@ export default function translateStatement(
   } else if (statement.type === "SwitchStatement") {
     // psuedo-register 2 is used for holding the switch block index
     return translateSwitchStatement(statement);
+  } else if (statement.type === "ExpressionStatement") {
+    return {
+      type: "Nop",
+    };
   } else {
     throw new TranslationError("Unhandled statement");
   }

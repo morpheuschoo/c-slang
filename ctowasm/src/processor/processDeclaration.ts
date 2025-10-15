@@ -51,6 +51,7 @@ import { ENUM_DATA_TYPE, POINTER_TYPE } from "~src/common/constants";
 import processEnumDeclaration from "~src/processor/processEnumDeclaration";
 import { ExpressionWrapperP } from "~src/processor/c-ast/expression/expressions";
 import { Expression } from "~src/parser/c-ast/core";
+import { memoryManager } from "~src/processor/memoryManager";
 
 /**
  * Processes a Declaration node that is found within a function.
@@ -63,6 +64,18 @@ export function processLocalDeclaration(
 ): StatementP[] {
   if (declaration.type === "Declaration") {
     let symbolEntry = symbolTable.addEntry(declaration);
+    
+    if (symbolEntry.type !== "function") {
+      const varEntry = symbolEntry as VariableSymbolEntry;
+      memoryManager.getAddressMap().addVariable(declaration.name, {
+        name: declaration.name,
+        offset: varEntry.offset,
+        isGlobal: varEntry.type === "dataSegmentVariable",
+        size: getDataTypeSize(declaration.dataType),
+        dataType: declaration.dataType
+      });
+    }
+
     if (
       symbolEntry.type === "function" &&
       typeof declaration.initializer !== "undefined"
@@ -79,7 +92,10 @@ export function processLocalDeclaration(
     symbolEntry = symbolEntry as VariableSymbolEntry; // definitely not dealing with a function declaration already
 
     // We have already allocated space for data segment variables, no more memory statements are needed
-    if (typeof declaration.initializer !== "undefined" && symbolEntry.type !== "dataSegmentVariable") {
+    if (
+      typeof declaration.initializer !== "undefined" &&
+      symbolEntry.type !== "dataSegmentVariable"
+    ) {
       return unpackLocalVariableInitializerAccordingToDataType(
         symbolEntry,
         declaration.initializer,
@@ -197,9 +213,11 @@ export function unpackLocalVariableInitializerAccordingToDataType(
             type: "LocalAddress",
             offset: createMemoryOffsetIntegerConstant(currOffset), // offset of this primary data object = offset of variable it belongs to + offset within variable type
             dataType: "pointer",
+            position: initializer.position,
           },
           value: processedExpr.exprs[0],
           dataType: scalarDataType,
+          position: initializer.position,
         });
         currOffset += getDataTypeSize(dataType);
       } else {
@@ -214,6 +232,7 @@ export function unpackLocalVariableInitializerAccordingToDataType(
               value: 0,
               dataType: (dataType as PrimaryDataType)
                 .primaryDataType as FloatDataType,
+              position: initializer.position,
             };
           } else {
             zeroExpression = {
@@ -226,6 +245,7 @@ export function unpackLocalVariableInitializerAccordingToDataType(
                   : dataType.type === "enum"
                   ? ENUM_DATA_TYPE
                   : (dataType.primaryDataType as IntegerDataType),
+              position: initializer.position,
             };
           }
           memoryStoreStatements.push({
@@ -234,9 +254,11 @@ export function unpackLocalVariableInitializerAccordingToDataType(
               type: "LocalAddress",
               offset: createMemoryOffsetIntegerConstant(currOffset), // offset of this primary data object = offset of variable it belongs to + offset within variable type
               dataType: "pointer",
+              position: initializer.position,
             },
             value: zeroExpression,
             dataType: scalarDataType,
+            position: initializer.position,
           });
           currOffset += getDataTypeSize(dataType);
         } else {
@@ -255,6 +277,7 @@ export function unpackLocalVariableInitializerAccordingToDataType(
                   value: 0,
                   dataType: (dataType as PrimaryDataType)
                     .primaryDataType as FloatDataType,
+                  position: initializer.position,
                 };
               } else {
                 zeroExpression = {
@@ -267,6 +290,7 @@ export function unpackLocalVariableInitializerAccordingToDataType(
                       : dataType.type === "enum"
                       ? ENUM_DATA_TYPE
                       : (dataType.primaryDataType as IntegerDataType),
+                  position: initializer.position,
                 };
               }
               memoryStoreStatements.push({
@@ -275,9 +299,11 @@ export function unpackLocalVariableInitializerAccordingToDataType(
                   type: "LocalAddress",
                   offset: createMemoryOffsetIntegerConstant(currOffset), // offset of this primary data object = offset of variable it belongs to + offset within variable type
                   dataType: "pointer",
+                  position: initializer.position,
                 },
                 value: zeroExpression,
                 dataType: scalarDataType,
+                position: initializer.position,
               });
               currOffset += getDataTypeSize(dataType);
               return offset;
@@ -306,9 +332,11 @@ export function unpackLocalVariableInitializerAccordingToDataType(
               type: "LocalAddress",
               offset: createMemoryOffsetIntegerConstant(currOffset), // offset of this primary data object = offset of variable it belongs to + offset within variable type
               dataType: "pointer",
+              position: processedExpr.exprs[0].position,
             },
             value: processedExpr.exprs[0],
             dataType: scalarDataType,
+            position: processedExpr.exprs[0].position,
           });
           currOffset += getDataTypeSize(dataType);
         }
@@ -352,9 +380,11 @@ export function unpackLocalVariableInitializerAccordingToDataType(
                     type: "LocalAddress",
                     offset: createMemoryOffsetIntegerConstant(currOffset), // offset of this primary data object = offset of variable it belongs to + offset within variable type
                     dataType: "pointer",
+                    position: primaryExpr.position,
                   },
                   value: primaryExpr,
                   dataType: primaryMemoryObj.dataType,
+                  position: primaryExpr.position,
                 });
                 currOffset += getSizeOfScalarDataType(
                   primaryMemoryObj.dataType,
@@ -409,9 +439,11 @@ export function unpackLocalVariableInitializerAccordingToDataType(
               type: "LocalAddress",
               offset: createMemoryOffsetIntegerConstant(currOffset), // offset of this primary data object = offset of variable it belongs to + offset within variable type
               dataType: "pointer",
+              position: primaryExpr.position,
             },
             value: primaryExpr,
             dataType: primaryMemoryObj.dataType,
+            position: primaryExpr.position,
           });
           currOffset += getSizeOfScalarDataType(primaryMemoryObj.dataType);
         }

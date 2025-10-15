@@ -8,11 +8,18 @@ import {
   generate_C_AST as original_generate_C_AST,
   generate_WAT_AST as originalGenerate_WAT_AST,
   generate_processed_C_AST as original_generate_processed_C_AST,
+  interpret_C_AST as original_interpter_C_AST,
+  evaluate as originalEvaluate,
   WatCompilationResult,
   CompilationResult,
+  EvaluationResult,
 } from "./compiler";
 import { calculateNumberOfPagesNeededForBytes } from "~src/common/utils";
 import { WASM_PAGE_SIZE } from "~src/translator/memoryUtil";
+import { InstructionType } from "./interpreter/controlItems/instructions";
+import { controlItemToString } from "./interpreter";
+
+export { InstructionType, controlItemToString };
 
 export const defaultModuleRepository = new ModuleRepository(); // default repository containing module information without any custom configs or wasm memory
 
@@ -22,6 +29,25 @@ export function compileToWat(program: string): WatCompilationResult {
 
 export function generate_WAT_AST(program: string) {
   return originalGenerate_WAT_AST(program, defaultModuleRepository);
+}
+
+export function interpret_C_AST(
+  program: string,
+  modulesConfig: ModulesGlobalConfig,
+) {
+  return original_interpter_C_AST(
+    program,
+    defaultModuleRepository,
+    modulesConfig,
+  );
+}
+
+export async function evaluate(
+  program: string,
+  modulesConfig: ModulesGlobalConfig,
+  targetStep: number,
+): Promise<EvaluationResult> {
+  return await originalEvaluate(program, defaultModuleRepository, targetStep);
 }
 
 export async function compile(program: string): Promise<CompilationResult> {

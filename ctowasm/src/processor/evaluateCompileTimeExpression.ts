@@ -28,6 +28,8 @@ export function performBinaryOperation(
   operator: BinaryOperator,
   b: any,
 ) {
+  const isNonZero = (x: any) => (typeof x === "bigint" ? x !== 0n : x !== 0);
+
   switch (operator) {
     // arithmetic operators
     case "+":
@@ -42,9 +44,9 @@ export function performBinaryOperation(
       return a % b;
     // logical operators
     case "&&":
-      return a !== 0 && b !== 0 ? 1 : 0;
+      return isNonZero(a) && isNonZero(b) ? 1 : 0;
     case "||":
-      return a !== 0 || b !== 0 ? 1 : 0;
+      return isNonZero(a) || isNonZero(b) ? 1 : 0;
     // relational operator
     case "<":
       return a < b ? 1 : 0;
@@ -85,9 +87,19 @@ export function performUnaryOperation(a: any, operator: UnaryOperator) {
       return a - 1;
     // Prefix Operators
     case "!":
-      return a === 0 ? 1 : 0;
+      if (typeof a === "bigint") {
+        return a === 0n ? 1n : 0n;
+      } else {
+        return a === 0 ? 1 : 0;
+      }
     case "~":
-      return ~a;
+      if (typeof a === "bigint") {
+        return ~a;
+      } else {
+        throw new Error(
+          "Bitwise NOT (~) operator can only be applied to integer types",
+        );
+      }
     case "-":
       return -a;
     case "+":
@@ -155,6 +167,7 @@ export default function evaluateCompileTimeExpression(
         type: "IntegerConstant",
         dataType: dataType.primaryDataType as IntegerDataType,
         value,
+        position: expr.position,
       };
     } else {
       // the result of the binary expression is a floating point
@@ -162,6 +175,7 @@ export default function evaluateCompileTimeExpression(
         type: "FloatConstant",
         dataType: dataType.primaryDataType as FloatDataType,
         value: value as number,
+        position: expr.position,
       };
     }
   } else if (
@@ -180,6 +194,7 @@ export default function evaluateCompileTimeExpression(
         type: "IntegerConstant",
         dataType: dataType as IntegerDataType,
         value,
+        position: expr.position,
       };
     } else {
       // the result of the binary expression is a floating point
@@ -187,6 +202,7 @@ export default function evaluateCompileTimeExpression(
         type: "FloatConstant",
         dataType: dataType as FloatDataType,
         value: value as number,
+        position: expr.position,
       };
     }
   } else {

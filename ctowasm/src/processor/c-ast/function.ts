@@ -24,7 +24,7 @@ export interface FunctionDetails {
  * Function calls are simply statements - i.e. they do not load any data type. The loading of the return object
  * of the function must be added after the function call.
  */
-export interface FunctionCallP {
+export interface FunctionCallP extends CNodePBase {
   type: "FunctionCall";
   calledFunction: CalledFunction;
   functionDetails: FunctionDetails; // details of the function being called
@@ -33,12 +33,12 @@ export interface FunctionCallP {
 
 export type CalledFunction = IndirectlyCalledFunction | DirectlyCalledFunction;
 
-export interface IndirectlyCalledFunction {
+export interface IndirectlyCalledFunction extends CNodePBase {
   type: "IndirectlyCalledFunction";
   functionAddress: ExpressionP; // expression that returns the address of function to call
 }
 
-export interface DirectlyCalledFunction {
+export interface DirectlyCalledFunction extends CNodePBase {
   type: "DirectlyCalledFunction";
   functionName: string;
 }

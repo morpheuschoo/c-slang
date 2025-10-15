@@ -120,6 +120,7 @@ export default function processBlockItem(
             ? processBlockItem(node.update, forLoopSymbolTable, enclosingFunc)
             : [],
         body: processLoopBody(node.body, forLoopSymbolTable, enclosingFunc),
+        position: node.position,
       };
 
       return [processedForLoopNode];
@@ -129,6 +130,7 @@ export default function processBlockItem(
           type: node.type,
           condition: processCondition(node.condition, symbolTable),
           body: processLoopBody(node.body, symbolTable, enclosingFunc), // processing a block always gives array of statements
+          position: node.position,
         },
       ];
     } else if (node.type === "ReturnStatement") {
@@ -144,6 +146,7 @@ export default function processBlockItem(
         return [
           {
             type: "ReturnStatement",
+            position: node.position,
           },
         ];
       }
@@ -164,6 +167,7 @@ export default function processBlockItem(
           elseStatements: node.elseStatement
             ? processBlockItem(node.elseStatement, symbolTable, enclosingFunc)
             : null,
+          position: node.position,
         },
       ];
     } else if (node.type === "BreakStatement") {
@@ -175,6 +179,7 @@ export default function processBlockItem(
       return [
         {
           type: node.type,
+          position: node.position,
         },
       ];
       // start of processing Expression nodes which may have side effects
@@ -185,6 +190,7 @@ export default function processBlockItem(
       return [
         {
           type: node.type,
+          position: node.position,
         },
       ];
       // start of processing Expression nodes which may have side effects
@@ -251,8 +257,10 @@ export default function processBlockItem(
             operator: "==",
             operandTargetDataType: dataTypeOfSwitchCaseOperandAndTarget,
             dataType: dataTypeOfSwitchCaseOperandAndTarget,
+            position: switchStatementCase.position,
           },
           statements: processedStatements,
+          position: switchStatementCase.position,
         });
       }
       const processedDefaultStatements: StatementP[] = [];
@@ -268,6 +276,7 @@ export default function processBlockItem(
           targetExpression: processedTargetExpression.exprs[0], // since processedtargetexpression has integer type, only has one primary data expression
           cases: processedCases,
           defaultStatements: processedDefaultStatements,
+          position: node.position,
         },
       ];
     } else if (node.type === "Assignment") {
@@ -286,8 +295,18 @@ export default function processBlockItem(
         return getArithmeticPrePostfixExpressionNodes(node, symbolTable)
           .storeNodes;
       } else {
-        processExpression(node, symbolTable, enclosingFunc);
-        return [];
+        // NOTE: commented out to disable removal of "redundant" statements
+        // processExpression(node, symbolTable, enclosingFunc);
+        // return [];
+        const processed = processExpression(node, symbolTable, enclosingFunc);
+
+        return [
+          {
+            type: "ExpressionStatement",
+            expr: processed.exprs[0],
+            position: processed.exprs[0].position,
+          },
+        ];
       }
     } else if (node.type === "CommaSeparatedExpressions") {
       const processedExpressions: StatementP[] = [];
@@ -314,6 +333,7 @@ export default function processBlockItem(
             symbolTable,
             enclosingFunc,
           ),
+          position: node.position,
         },
       ];
     } else if (
@@ -327,9 +347,21 @@ export default function processBlockItem(
       node.type === "StructMemberAccess"
     ) {
       addWarning("statement with no effect", node.position);
-      processExpression(node, symbolTable, enclosingFunc);
+
+      // NOTE: commented out to disable removal of "redundant" statements
+      // processExpression(node, symbolTable, enclosingFunc);
       // all these expression statements can be safely ignored as they have no side effects
-      return [];
+      // return [];
+
+      const processed = processExpression(node, symbolTable, enclosingFunc);
+
+      return [
+        {
+          type: "ExpressionStatement",
+          expr: processed.exprs[0],
+          position: processed.exprs[0].position,
+        },
+      ];
     } else if (node.type === "StringLiteral") {
       addWarning("statement with no effect", node.position);
       return [];

@@ -47,7 +47,7 @@
     "yargs": "^17.7.2"
   },
   "scripts": {
-    "build": "yarn clean-dist && yarn gen-parsers && parcel build --no-cache",
+    "build": "yarn clean-dist && yarn gen-parsers && parcel build --no-cache && cp -r dist ../../frontend/src/ctowasm",
     "lint": "eslint . --fix",
     "prettify": "prettier . --write",
     "compile": "yarn build && node cmd.js compile",
@@ -63,10 +63,12 @@
     "gen-preprocessor": "peggy ./src/parser/peggyjs/preprocessor.pegjs --cache --allowed-start-rules program",
     "gen-lexer": "peggy ./src/parser/peggyjs/lexer.pegjs --cache --allowed-start-rules program",
     "gen-parser": "peggy ./src/parser/peggyjs/parser.pegjs --cache --allowed-start-rules program",
-    "gen-parsers": "yarn gen-preprocessor && yarn gen-lexer && yarn gen-parser"
+    "gen-parsers": "yarn gen-preprocessor && yarn gen-lexer && yarn gen-parser",
+    "interpret": "node cmd-interpreter.js"
   },
   "dependencies": {
     "bignumber.js": "^9.1.2",
+    "fs": "^0.0.1-security",
     "wabt": "^1.0.32"
   }
 }

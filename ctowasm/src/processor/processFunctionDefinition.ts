@@ -27,6 +27,7 @@ import {
 } from "~src/processor/dataTypeUtil";
 import { DataType, FunctionDataType } from "~src/parser/c-ast/dataTypes";
 import { ExpressionWrapperP } from "~src/processor/c-ast/expression/expressions";
+import { memoryManager } from "~src/processor/memoryManager";
 
 export default function processFunctionDefinition(
   node: FunctionDefinition,
@@ -39,6 +40,8 @@ export default function processFunctionDefinition(
   }
 
   const funcSymbolTable = new SymbolTable(symbolTable);
+
+  memoryManager.enterScope(node.name);
 
   // add all the params to the symbol table
   for (let i = 0; i < node.parameterNames.length; ++i) {
@@ -55,6 +58,7 @@ export default function processFunctionDefinition(
     sizeOfLocals: 0, // will be incremented as body is visited
     body: [],
     dataType: node.dataType,
+    position: node.position,
   };
 
   // visit body
@@ -64,6 +68,9 @@ export default function processFunctionDefinition(
     functionDefinitionNode,
   );
   functionDefinitionNode.body = body; // body is a Block, an array of StatementP will be returned
+
+  memoryManager.exitScope();
+
   return functionDefinitionNode;
 }
 
@@ -104,13 +111,16 @@ export function processFunctionReturnStatement(
         subtype: "store",
         offset: createMemoryOffsetIntegerConstant(currOffset),
         dataType: "pointer",
+        position: expr.position,
       },
+      position: expr.position,
     });
     currOffset += getSizeOfScalarDataType(expr.dataType);
   });
 
   statements.push({
     type: "ReturnStatement",
+    position: expr.position,
   });
   return statements;
 }
@@ -137,6 +147,7 @@ export function convertFunctionCallToFunctionCallP(
         calledFunction: {
           type: "DirectlyCalledFunction",
           functionName: node.expr.name,
+          position: node.position,
         },
         functionDetails: symbolEntry.functionDetails,
         args: processFunctionCallArgs(
@@ -144,6 +155,7 @@ export function convertFunctionCallToFunctionCallP(
           symbolEntry.dataType,
           symbolTable,
         ),
+        position: node.position,
       },
       returnType: symbolEntry.dataType.returnType,
     };
@@ -167,10 +179,12 @@ export function convertFunctionCallToFunctionCallP(
       calledFunction: {
         type: "IndirectlyCalledFunction",
         functionAddress: processedCalledExpr.exprs[0],
+        position: processedCalledExpr.exprs[0].position,
       },
       functionDetails:
         convertFunctionDataTypeToFunctionDetails(functionDataType),
       args: processFunctionCallArgs(node.args, functionDataType, symbolTable),
+      position: processedCalledExpr.exprs[0].position,
     },
   };
 }

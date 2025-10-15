@@ -133,7 +133,7 @@ export class SourceStandardLibraryModule extends Module {
         jsFunction: (val: bigint) => {
           // need to intepret val as unsigned 8 byte unsigned int
           if (val < 0) {
-            this.print((val + 2n ** 64n).toString());
+            this.print((BigInt(val) + 2n ** 64n).toString());
           } else {
             this.print(val.toString());
           }

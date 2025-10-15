@@ -12,7 +12,12 @@ import {
   generateCompilationWarningMessage,
   toJson,
 } from "~src/errors";
-import ModuleRepository, { ModuleName } from "~src/modules";
+import ModuleRepository, {
+  ModuleName,
+  ModulesGlobalConfig,
+} from "~src/modules";
+import { interpret, evaluateTillStep } from "~src/interpreter/index";
+import { CContext } from "~src/interpreter/interpret";
 
 export interface SuccessfulCompilationResult {
   status: "success";
@@ -32,6 +37,21 @@ export type CompilationResult =
   | SuccessfulCompilationResult
   | FailedCompilationResult;
 
+export interface SuccessfulEvaluationResult {
+  status: "success";
+  context: CContext;
+  importedModules: ModuleName[];
+}
+
+interface FailedEvaluationResult {
+  status: "failure";
+  errorMessage: string;
+}
+
+export type EvaluationResult =
+  | SuccessfulEvaluationResult
+  | FailedEvaluationResult;
+
 export async function compile(
   cSourceCode: string,
   moduleRepository: ModuleRepository,
@@ -48,6 +68,9 @@ export async function compile(
         generateCompilationWarningMessage(w.message, cSourceCode, w.position),
       ),
     );
+
+    // interpret(astRootNode, cAstRoot.includedModules, moduleRepository.config); // here
+
     const wasmModule = translate(astRootNode, moduleRepository);
     const output = await compileWatToWasm(generateWat(wasmModule));
     return {
@@ -57,6 +80,54 @@ export async function compile(
       functionTableSize: wasmModule.functionTable.size,
       importedModules: includedModules,
       warnings,
+    };
+  } catch (e) {
+    if (e instanceof SourceCodeError) {
+      return {
+        status: "failure",
+        errorMessage: e.generateCompilationErrorMessage(cSourceCode),
+      };
+    }
+    if (e instanceof ParserCompilationErrors) {
+      return {
+        status: "failure",
+        errorMessage: e.message,
+      };
+    }
+    throw e;
+  }
+}
+
+export async function evaluate(
+  cSourceCode: string,
+  moduleRepository: ModuleRepository,
+  targetStep: number,
+): Promise<EvaluationResult> {
+  try {
+    const { cAstRoot, warnings } = parse(cSourceCode, moduleRepository);
+    const {
+      astRootNode,
+      includedModules,
+      warnings: processorWarnings,
+    } = process(cAstRoot, moduleRepository);
+    warnings.push(
+      ...processorWarnings.map((w) =>
+        generateCompilationWarningMessage(w.message, cSourceCode, w.position),
+      ),
+    );
+
+    const outputContext = await evaluateTillStep(
+      astRootNode,
+      cAstRoot.includedModules,
+      moduleRepository.config,
+      targetStep,
+      cSourceCode,
+    );
+
+    return {
+      status: "success",
+      context: outputContext,
+      importedModules: includedModules,
     };
   } catch (e) {
     if (e instanceof SourceCodeError) {
@@ -169,4 +240,14 @@ export function generate_WAT_AST(
   //checkForErrors(cSourceCode, CAst, Object.keys(wasmModuleImports)); // use semantic analyzer to check for semantic errors
   const wasmAst = translate(astRootNode, moduleRepository);
   return toJson(wasmAst);
+}
+
+export function interpret_C_AST(
+  cSourceCode: string,
+  moduleRepository: ModuleRepository,
+  moduleConfig: ModulesGlobalConfig,
+) {
+  const { cAstRoot } = parse(cSourceCode, moduleRepository);
+  const { astRootNode } = process(cAstRoot, moduleRepository);
+  interpret(astRootNode, cAstRoot.includedModules, moduleConfig, cSourceCode);
 }

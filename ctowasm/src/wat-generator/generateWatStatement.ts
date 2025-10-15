@@ -85,6 +85,8 @@ export default function generateWatStatement(node: WasmStatement): string {
     )}))`;
   } else if (node.type === "BranchTable") {
     return generateBranchTableInstruction(node);
+  } else if (node.type === "Nop") {
+    return "(nop)";
   } else {
     throw new WatGeneratorError(`Unhandled statement: ${toJson(node)}`);
   }

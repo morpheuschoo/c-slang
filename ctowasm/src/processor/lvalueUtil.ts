@@ -168,6 +168,7 @@ export function getAssignmentNodes(
       address: memoryLoadExpr.address,
       value: assigneeValue,
       dataType: memoryLoadExpr.dataType,
+      position: memoryLoadExpr.position,
     });
   }
 
