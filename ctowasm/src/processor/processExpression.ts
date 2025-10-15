@@ -48,6 +48,7 @@ import {
   checkBinaryExpressionConstraints,
   checkConditionalExpressionOperands,
 } from "~src/processor/constraintChecks";
+import { MemoryManager } from './memoryManager'
 
 /**
  * Processes an Expression node in the context where value(s) are expected to be loaded from memory for use in a statement (action).
@@ -55,12 +56,13 @@ import {
 export default function processExpression(
   expr: Expression,
   symbolTable: SymbolTable,
+  memoryManager: MemoryManager,
   enclosingFunc?: FunctionDefinitionP,
 ): ExpressionWrapperP {
   try {
     if (expr.type === "Assignment") {
       const { memoryStoreStatements, memoryLoadExpressions, dataType } =
-        getAssignmentNodes(expr, symbolTable);
+        getAssignmentNodes(expr, symbolTable, memoryManager);
 
       return {
         originalDataType: dataType,
@@ -77,13 +79,13 @@ export default function processExpression(
         ],
       };
     } else if (expr.type === "BinaryExpression") {
-      const processedLeftExpr = processExpression(expr.leftExpr, symbolTable);
+      const processedLeftExpr = processExpression(expr.leftExpr, symbolTable, memoryManager);
       const processedLeftExprDataType = getDataTypeOfExpression({
         expression: processedLeftExpr,
         convertArrayToPointer: true,
         convertFunctionToPointer: true,
       });
-      const processedRightExpr = processExpression(expr.rightExpr, symbolTable);
+      const processedRightExpr = processExpression(expr.rightExpr, symbolTable, memoryManager);
       const processedRightExprDataType = getDataTypeOfExpression({
         expression: processedRightExpr,
         convertArrayToPointer: true,
@@ -240,7 +242,7 @@ export default function processExpression(
       const {
         functionCallP: functionCallStatement,
         returnType: funcReturnType,
-      } = convertFunctionCallToFunctionCallP(expr, symbolTable);
+      } = convertFunctionCallToFunctionCallP(expr, symbolTable, memoryManager);
 
       if (funcReturnType.type === "void") {
         // trying to use a function call as an expression in context that expects a return object
@@ -283,9 +285,9 @@ export default function processExpression(
         ],
       };
     } else if (expr.type === "PrefixExpression") {
-      return processPrefixExpression(expr, symbolTable);
+      return processPrefixExpression(expr, symbolTable, memoryManager);
     } else if (expr.type === "PostfixExpression") {
-      return processPostfixExpression(expr, symbolTable);
+      return processPostfixExpression(expr, symbolTable, memoryManager);
     } else if (expr.type === "IdentifierExpression") {
       const symbolEntry = symbolTable.getSymbolEntry(expr.name);
       if (!symbolEntry) {
@@ -376,7 +378,7 @@ export default function processExpression(
 
         // If function pointer, dont increase the pointer nesting, just return processed identifier expression
         if (isFunctionPointer(symbolEntry.dataType)) {
-          return processExpression(expr.expr, symbolTable, enclosingFunc);
+          return processExpression(expr.expr, symbolTable, memoryManager, enclosingFunc);
         }
 
         return {
@@ -397,13 +399,13 @@ export default function processExpression(
           ],
         };
       } else if (expr.expr.type === "PointerDereference") {
-        return processExpression(expr.expr.expr, symbolTable); // simply return the expression within the deref expression (& cancels *)
+        return processExpression(expr.expr.expr, symbolTable, memoryManager); // simply return the expression within the deref expression (& cancels *)
       } else {
         throw new ProcessingError("lvalue required for unary '&' operand");
       }
     } else if (expr.type === "PointerDereference") {
       // process the expression being dereferenced first
-      const derefedExpression = processExpression(expr.expr, symbolTable);
+      const derefedExpression = processExpression(expr.expr, symbolTable, memoryManager);
       const derefedExpressionDataType = getDataTypeOfExpression({
         expression: derefedExpression,
         convertArrayToPointer: true,
@@ -497,7 +499,7 @@ export default function processExpression(
       if (expr.subtype === "expression") {
         // sizeof used on expression
         dataTypeToGetSizeOf = getDataTypeOfExpression({
-          expression: processExpression(expr.expr, symbolTable),
+          expression: processExpression(expr.expr, symbolTable, memoryManager),
         });
       } else {
         // sizeof used on datatype
@@ -528,7 +530,7 @@ export default function processExpression(
         ],
       };
     } else if (expr.type === "StructMemberAccess") {
-      const processedExpr = processExpression(expr.expr, symbolTable); // process the underlying expression being operated on
+      const processedExpr = processExpression(expr.expr, symbolTable, memoryManager); // process the underlying expression being operated on
       const dataTypeOfExpr = getDataTypeOfExpression({
         expression: processedExpr,
         convertArrayToPointer: true,
@@ -661,6 +663,7 @@ export default function processExpression(
       const processedLastExpr = processExpression(
         expr.expressions[expr.expressions.length - 1],
         symbolTable,
+        memoryManager
       );
       const precedingExpressionsAsStatements: StatementP[] = [];
       for (let i = 0; i < expr.expressions.length - 1; ++i) {
@@ -669,6 +672,7 @@ export default function processExpression(
             expr.expressions[i],
             symbolTable,
             enclosingFunc as FunctionDefinitionP,
+            memoryManager,
           ),
         );
       }
@@ -689,11 +693,13 @@ export default function processExpression(
       const processedCondition = processExpression(
         expr.condition,
         symbolTable,
+        memoryManager,
         enclosingFunc,
       );
       const processedTrueExpression = processExpression(
         expr.trueExpression,
         symbolTable,
+        memoryManager
       );
       const dataTypeOfTrueExpression = getDataTypeOfExpression({
         expression: processedTrueExpression,
@@ -703,6 +709,7 @@ export default function processExpression(
       const processedFalseExpression = processExpression(
         expr.falseExpression,
         symbolTable,
+        memoryManager
       );
       const dataTypeOfFalseExpression = getDataTypeOfExpression({
         expression: processedFalseExpression,

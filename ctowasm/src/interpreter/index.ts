@@ -62,37 +62,38 @@ import {
   PreStatementExpressionP,
   UnaryExpressionP,
 } from "~src/processor/c-ast/expression/expressions";
-import { memoryManager } from "../processor/memoryManager";
+import { MemoryManager } from "../processor/memoryManager";
 
-export function interpret(
-  astRootNode: CAstRootP,
-  includedModules: ModuleName[],
-  moduleConfig: ModulesGlobalConfig,
-  sourceCode: string
-): void {
-  const interpreter = new Interpreter(
-    astRootNode,
-    includedModules,
-    moduleConfig,
-    sourceCode
-  );
-  interpreter.interpret();
-}
+// export function interpret(
+//   astRootNode: CAstRootP,
+//   includedModules: ModuleName[],
+//   moduleConfig: ModulesGlobalConfig,
+//   sourceCode: string
+// ): void {
+//   const interpreter = new Interpreter(
+//     astRootNode,
+//     includedModules,
+//     moduleConfig,
+//     sourceCode
+//   );
+//   interpreter.interpret();
+// }
 
 export async function evaluateTillStep(
   astRootNode: CAstRootP,
   includedModules: ModuleName[],
   moduleConfig: ModulesGlobalConfig,
   targetStep: number,
-  sourceCode: string
+  sourceCode: string,
+  memoryManager: MemoryManager
 ): Promise<CContext> {
   const interpreter = new Interpreter(
     astRootNode,
     includedModules,
     moduleConfig,
-    sourceCode
+    sourceCode,
+    memoryManager
   );
-  memoryManager.reload();
   return await interpreter.interpretTillStep(targetStep);
 }
 

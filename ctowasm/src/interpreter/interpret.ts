@@ -10,6 +10,7 @@ import ModuleRepository, {
 import { defaultPosition } from "./utils/constantsUtils";
 import { StackFrame } from "./stackFrame";
 import { InstructionType, StackFrameTearDownInstruction } from "./controlItems";
+import { MemoryManager } from "../processor/memoryManager";
 
 export interface CContext {
   astRoot: CAstRootP;
@@ -26,18 +27,21 @@ export class Interpreter {
   private readonly includedModules: ModuleName[];
   private readonly moduleConfig: ModulesGlobalConfig;
   private readonly sourceCode: string;
+  private readonly memoryManager: MemoryManager;
 
   constructor(
     astRootNode: CAstRootP,
     includedModules: ModuleName[],
     moduleConfig: ModulesGlobalConfig,
-    sourceCode: string
+    sourceCode: string,
+    memoryManager: MemoryManager
   ) {
     this.astRootNode = astRootNode;
     this.runtimeStack = []; // CURRENTLY NOT USED WITH HOW INTERPRETER IS SETUP
     this.includedModules = includedModules;
     this.moduleConfig = moduleConfig;
     this.sourceCode = sourceCode;
+    this.memoryManager = memoryManager;
   }
 
   async interpretTillStep(targetStep: number): Promise<CContext> {
@@ -114,7 +118,6 @@ export class Interpreter {
       }
     }
 
-
     // setup stack frames for visualizer
     const tearDowns: StackFrameTearDownInstruction[] = currentRuntime
     .getControl()
@@ -141,6 +144,7 @@ export class Interpreter {
           lastStackPointer,
           tearDowns[i].sizeOfReturn,
           currentRuntime.getMemory(),
+          this.memoryManager
         )
       );
 
@@ -154,9 +158,12 @@ export class Interpreter {
         0,
         0,
         0,
-        currentRuntime.getMemory()
+        currentRuntime.getMemory(),
+        this.memoryManager
       )
     )
+
+    // console.log(stackFrames);
 
     return {
       astRoot: this.astRootNode,

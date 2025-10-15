@@ -1,6 +1,6 @@
 import { ScalarCDataType } from "../common/types";
 import { MemoryAddressEntry } from "../processor/memoryAddressMap";
-import { memoryManager } from "../processor/memoryManager";
+import { MemoryManager } from "../processor/memoryManager";
 import { Memory } from "./memory";
 
 export class StackFrame {
@@ -16,14 +16,14 @@ export class StackFrame {
     stackPointer: number,
     sizeOfReturn: number,
     memory: Memory,
+    memoryManager: MemoryManager
   ) {
     this.functionName = functionName;
-
-    const addressMap = memoryManager.getAddressMap();
     this.basePointer = basePointer;
     this.stackPointer = stackPointer;
     this.sizeOfReturn = sizeOfReturn;
 
+    const addressMap = memoryManager.getAddressMap();
     const map = addressMap.getAddressMap();
 
     map.forEach((entry, name) => {

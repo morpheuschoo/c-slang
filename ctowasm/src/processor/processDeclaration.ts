@@ -51,7 +51,7 @@ import { ENUM_DATA_TYPE, POINTER_TYPE } from "~src/common/constants";
 import processEnumDeclaration from "~src/processor/processEnumDeclaration";
 import { ExpressionWrapperP } from "~src/processor/c-ast/expression/expressions";
 import { Expression } from "~src/parser/c-ast/core";
-import { memoryManager } from "~src/processor/memoryManager";
+import { MemoryManager } from "~src/processor/memoryManager";
 
 /**
  * Processes a Declaration node that is found within a function.
@@ -61,10 +61,11 @@ export function processLocalDeclaration(
   declaration: Declaration,
   symbolTable: SymbolTable,
   enclosingFunc: FunctionDefinitionP, // reference to enclosing function, if any
+  memoryManager: MemoryManager,
 ): StatementP[] {
   if (declaration.type === "Declaration") {
-    let symbolEntry = symbolTable.addEntry(declaration);
-    
+    let symbolEntry = symbolTable.addEntry(declaration, memoryManager);
+
     if (symbolEntry.type !== "function") {
       const varEntry = symbolEntry as VariableSymbolEntry;
       memoryManager.getAddressMap().addVariable(declaration.name, {
@@ -100,6 +101,7 @@ export function processLocalDeclaration(
         symbolEntry,
         declaration.initializer,
         symbolTable,
+        memoryManager,
       );
     } else {
       return [];
@@ -166,6 +168,7 @@ export function unpackLocalVariableInitializerAccordingToDataType(
   variableSymbolEntry: VariableSymbolEntry, // the symbol entry of the the variable being initialized
   initializer: Initializer,
   symbolTable: SymbolTable,
+  memoryManager: MemoryManager,
 ): MemoryStore[] {
   const memoryStoreStatements: MemoryStore[] = [];
   let currOffset = variableSymbolEntry.offset; // offset to use for address in memory store statements
@@ -197,7 +200,7 @@ export function unpackLocalVariableInitializerAccordingToDataType(
       }
 
       if (initializer.type === "InitializerSingle") {
-        const processedExpr = processExpression(initializer.value, symbolTable);
+        const processedExpr = processExpression(initializer.value, symbolTable, memoryManager);
         if (dataType.type === "struct self pointer") {
           checkIntializerExpressionAssignability(
             createStructSelfPointerDataType(structBeingFilled),
@@ -316,6 +319,7 @@ export function unpackLocalVariableInitializerAccordingToDataType(
           const processedExpr = processExpression(
             firstInitializer.value,
             symbolTable,
+            memoryManager,
           );
           // check assignability
           if (dataType.type === "struct self pointer") {
@@ -364,6 +368,7 @@ export function unpackLocalVariableInitializerAccordingToDataType(
             const processedExpr = processExpression(
               (initializer.values[offset] as InitializerSingle).value,
               symbolTable,
+              memoryManager,
             );
             if (processedExpr.originalDataType.type === "struct") {
               checkIntializerExpressionAssignability(
@@ -426,7 +431,7 @@ export function unpackLocalVariableInitializerAccordingToDataType(
       }
     } else if (dataType.type === "struct") {
       if (initializer.type === "InitializerSingle") {
-        const processedExpr = processExpression(initializer.value, symbolTable);
+        const processedExpr = processExpression(initializer.value, symbolTable, memoryManager);
         // handle direct initialization of struct with another struct
         checkIntializerExpressionAssignability(dataType, processedExpr);
         const unpackedStruct = unpackDataType(dataType);
@@ -487,9 +492,10 @@ export function unpackLocalVariableInitializerAccordingToDataType(
 export function processGlobalScopeDeclaration(
   declaration: Declaration,
   symbolTable: SymbolTable,
+  memoryManager: MemoryManager,
 ) {
   if (declaration.type === "Declaration") {
-    processDataSegmentVariableDeclaration(declaration, symbolTable);
+    processDataSegmentVariableDeclaration(declaration, symbolTable, memoryManager);
   } else if (declaration.type === "EnumDeclaration") {
     processEnumDeclaration(declaration, symbolTable);
   } else {
@@ -503,8 +509,9 @@ export function processGlobalScopeDeclaration(
 export function processDataSegmentVariableDeclaration(
   node: VariableDeclaration,
   symbolTable: SymbolTable,
+  memoryManager: MemoryManager
 ) {
-  const symbolEntry = symbolTable.addEntry(node);
+  const symbolEntry = symbolTable.addEntry(node, memoryManager);
   if (node.dataType.type === "function") {
     if (typeof node.initializer !== "undefined") {
       throw new ProcessingError(

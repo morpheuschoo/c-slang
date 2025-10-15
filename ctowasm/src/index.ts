@@ -8,7 +8,6 @@ import {
   generate_C_AST as original_generate_C_AST,
   generate_WAT_AST as originalGenerate_WAT_AST,
   generate_processed_C_AST as original_generate_processed_C_AST,
-  interpret_C_AST as original_interpter_C_AST,
   evaluate as originalEvaluate,
   WatCompilationResult,
   CompilationResult,
@@ -31,16 +30,16 @@ export function generate_WAT_AST(program: string) {
   return originalGenerate_WAT_AST(program, defaultModuleRepository);
 }
 
-export function interpret_C_AST(
-  program: string,
-  modulesConfig: ModulesGlobalConfig,
-) {
-  return original_interpter_C_AST(
-    program,
-    defaultModuleRepository,
-    modulesConfig,
-  );
-}
+// export function interpret_C_AST(
+//   program: string,
+//   modulesConfig: ModulesGlobalConfig,
+// ) {
+//   return original_interpter_C_AST(
+//     program,
+//     defaultModuleRepository,
+//     modulesConfig,
+//   );
+// }
 
 export async function evaluate(
   program: string,
