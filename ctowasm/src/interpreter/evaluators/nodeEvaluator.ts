@@ -16,6 +16,7 @@ import {
   unaryOpInstruction,
   whileLoopInstruction,
   forLoopInstruction,
+  functionIndexWrapper,
 } from "~src/interpreter/controlItems/instructions";
 import { CNodeType } from "~src/interpreter/controlItems/types";
 import { CNodeP, ExpressionP } from "~src/processor/c-ast/core";
@@ -398,27 +399,28 @@ export const NodeEvaluator: {
 
       return newRuntime;
     } else {
-      throw new Error("TODO: Implement indirectly called function");
-      // const calledFunction = node.calledFunction;
-      // const funcIndex: ExpressionP = calledFunction.functionAddress;
+      const calledFunction = node.calledFunction;
+      const funcIndex: ExpressionP = calledFunction.functionAddress;
 
-      // const newRuntime = runtime.push([
-      //   ...node.args,
-      //   funcIndex,
-      //   functionIndexWrapper(),
-      //   callInstruction(
-      //     node.calledFunction,
-      //     node.functionDetails,
-      //     calledFunction.functionAddress.position
-      //   ),
-      //   stackFrameTearDownInstruction(
-      //     pointers.basePointer.value,
-      //     pointers.stackPointer.value,
-      //     calledFunction.functionAddress.position
-      //   ),
-      // ]);
+      const newRuntime = runtime.push([
+        ...node.args,
+        funcIndex,
+        functionIndexWrapper(),
+        callInstruction(
+          node.calledFunction,
+          node.functionDetails,
+          calledFunction.functionAddress.position
+        ),
+        stackFrameTearDownInstruction(
+          "External function",
+          pointers.basePointer.value,
+          pointers.stackPointer.value,
+          node.functionDetails.sizeOfReturn,
+          calledFunction.functionAddress.position,
+        ),
+      ]);
 
-      // return newRuntime;
+      return newRuntime;
     }
   },
 

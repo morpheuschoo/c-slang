@@ -64,20 +64,21 @@ import {
 } from "~src/processor/c-ast/expression/expressions";
 import { MemoryManager } from "../processor/memoryManager";
 
-// export function interpret(
-//   astRootNode: CAstRootP,
-//   includedModules: ModuleName[],
-//   moduleConfig: ModulesGlobalConfig,
-//   sourceCode: string
-// ): void {
-//   const interpreter = new Interpreter(
-//     astRootNode,
-//     includedModules,
-//     moduleConfig,
-//     sourceCode
-//   );
-//   interpreter.interpret();
-// }
+export function interpret(
+  astRootNode: CAstRootP,
+  includedModules: ModuleName[],
+  moduleConfig: ModulesGlobalConfig,
+  sourceCode: string
+): void {
+  const interpreter = new Interpreter(
+    astRootNode,
+    includedModules,
+    moduleConfig,
+    sourceCode,
+    new MemoryManager(),
+  );
+  interpreter.interpret();
+}
 
 export async function evaluateTillStep(
   astRootNode: CAstRootP,

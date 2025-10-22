@@ -20,12 +20,14 @@ import {
 } from "~src/parser/c-ast/dataTypes";
 import { ExpressionWrapperP } from "~src/processor/c-ast/expression/expressions";
 import { PTRDIFF_T } from "~src/common/constants";
+import { MemoryManager } from "./memoryManager";
 
 export function processCondition(
   condition: Expression,
   symbolTable: SymbolTable,
+  memoryManager: MemoryManager,
 ) {
-  const processedCondition = processExpression(condition, symbolTable);
+  const processedCondition = processExpression(condition, symbolTable, memoryManager);
   const dataTypeOfConditionExpression = getDataTypeOfExpression({
     expression: processedCondition,
     convertArrayToPointer: true,

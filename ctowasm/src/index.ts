@@ -16,7 +16,10 @@ import {
 import { calculateNumberOfPagesNeededForBytes } from "~src/common/utils";
 import { WASM_PAGE_SIZE } from "~src/translator/memoryUtil";
 import { InstructionType } from "./interpreter/controlItems/instructions";
-import { controlItemToString } from "./interpreter";
+import { controlItemToString, interpret } from "./interpreter";
+import parse from "./parser";
+import process from "./processor";
+import { MemoryManager } from "./processor/memoryManager";
 
 export { InstructionType, controlItemToString };
 
@@ -30,16 +33,14 @@ export function generate_WAT_AST(program: string) {
   return originalGenerate_WAT_AST(program, defaultModuleRepository);
 }
 
-// export function interpret_C_AST(
-//   program: string,
-//   modulesConfig: ModulesGlobalConfig,
-// ) {
-//   return original_interpter_C_AST(
-//     program,
-//     defaultModuleRepository,
-//     modulesConfig,
-//   );
-// }
+export function interpret_C_AST(
+  program: string,
+  modulesConfig: ModulesGlobalConfig,
+) {
+  const { cAstRoot } = parse(program, defaultModuleRepository);
+  const { astRootNode } = process(cAstRoot, defaultModuleRepository, new MemoryManager());
+  interpret(astRootNode, cAstRoot.includedModules, modulesConfig, program);
+}
 
 export async function evaluate(
   program: string,

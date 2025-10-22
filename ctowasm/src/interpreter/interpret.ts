@@ -163,8 +163,6 @@ export class Interpreter {
       )
     )
 
-    // console.log(stackFrames);
-
     return {
       astRoot: this.astRootNode,
       control: currentRuntime.getControl(),
@@ -188,8 +186,6 @@ export class Interpreter {
     }
 
     // call main
-    console.log("Starting interpretation...");
-    console.log(this.astRootNode.position);
     const initialRuntime = new Runtime(
       new Control([
         {
@@ -235,11 +231,8 @@ export class Interpreter {
 
     let currentRuntime = initialRuntime;
 
-    // console.log(currentRuntime.toString());
-
     while (!currentRuntime.hasCompleted()) {
       currentRuntime = currentRuntime.next();
-      // console.log(currentRuntime.toString());
       this.runtimeStack.push(currentRuntime);
     }
   }

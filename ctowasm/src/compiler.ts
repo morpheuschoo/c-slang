@@ -16,7 +16,7 @@ import ModuleRepository, {
   ModuleName,
   ModulesGlobalConfig,
 } from "~src/modules";
-import { evaluateTillStep } from "~src/interpreter/index";
+import { evaluateTillStep, interpret } from "~src/interpreter/index";
 import { CContext } from "~src/interpreter/interpret";
 import { MemoryManager } from "./processor/memoryManager";
 
@@ -59,11 +59,12 @@ export async function compile(
 ): Promise<CompilationResult> {
   try {
     const { cAstRoot, warnings } = parse(cSourceCode, moduleRepository);
+    const memoryManager = new MemoryManager();
     const {
       astRootNode,
       includedModules,
       warnings: processorWarnings,
-    } = process(cAstRoot, moduleRepository);
+    } = process(cAstRoot, moduleRepository, memoryManager);
     warnings.push(
       ...processorWarnings.map((w) =>
         generateCompilationWarningMessage(w.message, cSourceCode, w.position),
@@ -168,9 +169,11 @@ export function compileToWat(
 ): WatCompilationResult {
   try {
     const { cAstRoot, warnings } = parse(cSourceCode, moduleRepository);
+    const memoryManager = new MemoryManager();
     const { astRootNode, warnings: processorWarnings } = process(
       cAstRoot,
       moduleRepository,
+      memoryManager,
     );
     warnings.push(
       ...processorWarnings.map((w) =>
@@ -222,7 +225,8 @@ export function generate_processed_C_AST(
 ) {
   try {
     const { cAstRoot } = parse(cSourceCode, moduleRepository);
-    const { astRootNode } = process(cAstRoot, moduleRepository);
+    const memoryManager = new MemoryManager();
+    const { astRootNode } = process(cAstRoot, moduleRepository, memoryManager);
     return toJson(astRootNode);
   } catch (e) {
     if (e instanceof SourceCodeError) {
@@ -237,18 +241,19 @@ export function generate_WAT_AST(
   moduleRepository: ModuleRepository,
 ) {
   const { cAstRoot } = parse(cSourceCode, moduleRepository);
-  const { astRootNode } = process(cAstRoot, moduleRepository);
+  const memoryManager = new MemoryManager();
+  const { astRootNode } = process(cAstRoot, moduleRepository, memoryManager);
   //checkForErrors(cSourceCode, CAst, Object.keys(wasmModuleImports)); // use semantic analyzer to check for semantic errors
   const wasmAst = translate(astRootNode, moduleRepository);
   return toJson(wasmAst);
 }
 
-// export function interpret_C_AST(
-//   cSourceCode: string,
-//   moduleRepository: ModuleRepository,
-//   moduleConfig: ModulesGlobalConfig,
-// ) {
-//   const { cAstRoot } = parse(cSourceCode, moduleRepository);
-//   const { astRootNode } = process(cAstRoot, moduleRepository);
-//   interpret(astRootNode, cAstRoot.includedModules, moduleConfig, cSourceCode);
-// }
+export function interpret_C_AST(
+  cSourceCode: string,
+  moduleRepository: ModuleRepository,
+  moduleConfig: ModulesGlobalConfig,
+) {
+  const { cAstRoot } = parse(cSourceCode, moduleRepository);
+  const { astRootNode } = process(cAstRoot, moduleRepository, new MemoryManager());
+  interpret(astRootNode, cAstRoot.includedModules, moduleConfig, cSourceCode);
+}
