@@ -163,8 +163,6 @@ export class Interpreter {
       )
     )
 
-    // console.log(stackFrames);
-
     return {
       astRoot: this.astRootNode,
       control: currentRuntime.getControl(),

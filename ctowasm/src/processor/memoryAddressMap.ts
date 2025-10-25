@@ -1,5 +1,5 @@
 import { SymbolTable, VariableSymbolEntry } from "~src/processor/symbolTable";
-import { DataType } from "../parser/c-ast/dataTypes";
+import { DataType, ArrayDataType } from "../parser/c-ast/dataTypes";
 
 export interface MemoryAddressEntry {
   name: string;
@@ -7,8 +7,11 @@ export interface MemoryAddressEntry {
   isGlobal: boolean;
   size: number;
   dataType: DataType;
-  value?: number;
+  value?: number | number[];
   absoluteAddress?: number;
+  isArray?: boolean;
+  arraySize?: number;
+  elementSize?: number;
 }
 
 export class MemoryAddressKey {
@@ -40,6 +43,13 @@ export class MemoryAddressMap {
 
   addVariable(name: string, entry: MemoryAddressEntry): void {
     const scopedName = this.getScopedName(name);
+
+    if (entry.dataType.type === "array") {
+      const arrayType = entry.dataType as ArrayDataType;
+      entry.isArray = true;
+      entry.elementSize = this.getDataTypeSize(arrayType.elementDataType);
+    }
+
     this.addressMap.set(
       new MemoryAddressKey(name, scopedName, entry.offset).toString(),
       entry
@@ -56,7 +66,7 @@ export class MemoryAddressMap {
 
   private getScopedName(name: string): string {
     if (this.scopeChain.length === 0) {
-      return name;
+      return "global";
     }
     return this.scopeChain[this.scopeChain.length - 1];
   }
@@ -74,12 +84,27 @@ export class MemoryAddressMap {
     for (const [name, entry] of Object.entries(table.symbols)) {
       if (entry.type === "localVariable" || entry.type === "dataSegmentVariable") {
         const varEntry = entry as VariableSymbolEntry;
+        const isArray = varEntry.dataType.type === "array";
+
+        let arraySize: number | undefined;
+        let elementSize: number | undefined;
+
+        if (isArray) {
+          const arrayType = varEntry.dataType as ArrayDataType;
+          elementSize = this.getDataTypeSize(arrayType.elementDataType);
+          // arraySize needs to be computed from numElements expression
+          // This should be done during processing, not here
+        }
+
         this.addVariable(name, {
           name,
           offset: varEntry.offset,
           isGlobal: entry.type === "dataSegmentVariable",
           size: this.getDataTypeSize(varEntry.dataType),
           dataType: varEntry.dataType,
+          isArray,
+          arraySize,
+          elementSize,
         });
       }
     }
@@ -102,22 +127,27 @@ export class MemoryAddressMap {
   }
 
   private processFunctionScopes(symbolTable: SymbolTable): void {
-    const functionNames: string[] = [];
-    for (const [name, entry] of Object.entries(symbolTable.symbols)) {
-      if (entry.type === "function") {
-        functionNames.push(name);
-      }
-    }
-
-    console.log(`Found ${functionNames.length} functions to process`);
-
     for (const entry of symbolTable.functionTable) {
       if (entry.isDefined) {
-        const functionName = entry.functionName;
-        console.log(`Processing local variables for function: ${functionName}`);
         this.processSymbolTable(symbolTable, false);
       }
     }
+  }
+
+  private getTypeDisplayString(entry: MemoryAddressEntry): string {
+    if (entry.isArray && entry.dataType.type === "array") {
+      const arrayType = entry.dataType as ArrayDataType;
+      const elementType = arrayType.elementDataType.type === "primary"
+        ? arrayType.elementDataType.primaryDataType
+        : arrayType.elementDataType.type;
+      return `array[${entry.arraySize || "?"}] of ${elementType}`;
+    }
+
+    if (entry.dataType.type === "primary") {
+      return entry.dataType.primaryDataType;
+    }
+
+    return entry.dataType.type;
   }
 
   public debugPrint(): void {
@@ -136,9 +166,10 @@ export class MemoryAddressMap {
     entries.sort((a, b) => a[1].offset - b[1].offset);
 
     entries.forEach(([name, entry]) => {
+      const typeStr = this.getTypeDisplayString(entry);
       console.log(
         `${name.padEnd(20)} | ${entry.isGlobal ? "Global" : "Local"} | ` +
-          `Offset: ${entry.offset} | Size: ${entry.size} bytes`
+          `Offset: ${entry.offset} | Size: ${entry.size} bytes | Type: ${typeStr}`
       );
     });
 

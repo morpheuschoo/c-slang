@@ -35,6 +35,7 @@ import evaluateCompileTimeExpression, {
   isCompileTimeExpression,
 } from "~src/processor/evaluateCompileTimeExpression";
 import {
+  ArrayDataType,
   DataType,
   PointerDataType,
   PrimaryDataType,
@@ -68,12 +69,29 @@ export function processLocalDeclaration(
 
     if (symbolEntry.type !== "function") {
       const varEntry = symbolEntry as VariableSymbolEntry;
+      const isArray = declaration.dataType.type === "array";
+
+      let arraySize: number | undefined;
+      let elementSize: number | undefined;
+
+      if (isArray) {
+        // Cast to ArrayDataType to access array-specific properties
+        const arrayType = declaration.dataType as ArrayDataType;
+        // Evaluate array size from numElements expression
+        const sizeConstant = evaluateCompileTimeExpression(arrayType.numElements);
+        arraySize = Number(sizeConstant.value); // Convert bigint to number
+        elementSize = getDataTypeSize(arrayType.elementDataType);
+      }
+
       memoryManager.getAddressMap().addVariable(declaration.name, {
         name: declaration.name,
         offset: varEntry.offset,
         isGlobal: varEntry.type === "dataSegmentVariable",
         size: getDataTypeSize(declaration.dataType),
-        dataType: declaration.dataType
+        dataType: declaration.dataType,
+        isArray,
+        arraySize,
+        elementSize,
       });
     }
 
