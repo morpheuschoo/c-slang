@@ -118,7 +118,7 @@ export default function processBlockItem(
         clause,
         condition:
           node.condition !== null
-            ? processCondition(node.condition, forLoopSymbolTable)
+            ? processCondition(node.condition, forLoopSymbolTable, memoryManager)
             : null,
         update:
           node.update !== null
@@ -133,7 +133,7 @@ export default function processBlockItem(
       return [
         {
           type: node.type,
-          condition: processCondition(node.condition, symbolTable),
+          condition: processCondition(node.condition, symbolTable, memoryManager),
           body: processLoopBody(node.body, symbolTable, enclosingFunc, memoryManager), // processing a block always gives array of statements
           position: node.position,
         },
@@ -163,7 +163,7 @@ export default function processBlockItem(
       return [
         {
           type: "SelectionStatement",
-          condition: processCondition(node.condition, symbolTable),
+          condition: processCondition(node.condition, symbolTable, memoryManager),
           ifStatements: processBlockItem(
             node.ifStatement,
             symbolTable,
@@ -331,7 +331,7 @@ export default function processBlockItem(
       return [
         {
           type: "SelectionStatement",
-          condition: processCondition(node.condition, symbolTable),
+          condition: processCondition(node.condition, symbolTable, memoryManager),
           ifStatements: processBlockItem(
             node.trueExpression,
             symbolTable,

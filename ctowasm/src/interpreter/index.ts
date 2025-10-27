@@ -98,22 +98,23 @@ export async function evaluateTillStep(
 }
 
 export function extractCodeSegment(controlItem: ControlItem): string {
-  const codePosition = controlItem.position;
+  // const codePosition = controlItem.position;
 
-  // extract the code position at a line start and line end
-  const lines = Runtime.sourceCode.split("\n");
-  const extractedCode = lines
-    .slice(codePosition.start.line - 1, codePosition.end.line)
-    .filter((line) => line.trim() !== "");
+  // // extract the code position at a line start and line end
+  // const lines = Runtime.sourceCode.split("\n");
+  // const extractedCode = lines
+  //   .slice(codePosition.start.line - 1, codePosition.end.line)
+  //   .filter((line) => line.trim() !== "");
 
-  if (extractedCode.length > 0) {
-    extractedCode[0] = extractedCode[0].slice(codePosition.start.column - 1);
-    extractedCode[extractedCode.length - 1] = extractedCode[
-      extractedCode.length - 1
-    ].slice(0, codePosition.end.column - 1);
-  }
+  // if (extractedCode.length > 0) {
+  //   extractedCode[0] = extractedCode[0].slice(codePosition.start.column - 1);
+  //   extractedCode[extractedCode.length - 1] = extractedCode[
+  //     extractedCode.length - 1
+  //   ].slice(0, codePosition.end.column - 1);
+  // }
 
-  return extractedCode.join("\n");
+  // return extractedCode.join("\n");
+  return "";
 }
 
 export function controlItemToString(controlItem: ControlItem): string {

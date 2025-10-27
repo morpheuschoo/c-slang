@@ -63,7 +63,7 @@ export async function compile(
       astRootNode,
       includedModules,
       warnings: processorWarnings,
-    } = process(cAstRoot, moduleRepository);
+    } = process(cAstRoot, moduleRepository, new MemoryManager());
     warnings.push(
       ...processorWarnings.map((w) =>
         generateCompilationWarningMessage(w.message, cSourceCode, w.position),
@@ -171,6 +171,7 @@ export function compileToWat(
     const { astRootNode, warnings: processorWarnings } = process(
       cAstRoot,
       moduleRepository,
+      new MemoryManager(),
     );
     warnings.push(
       ...processorWarnings.map((w) =>
@@ -222,7 +223,7 @@ export function generate_processed_C_AST(
 ) {
   try {
     const { cAstRoot } = parse(cSourceCode, moduleRepository);
-    const { astRootNode } = process(cAstRoot, moduleRepository);
+    const { astRootNode } = process(cAstRoot, moduleRepository, new MemoryManager());
     return toJson(astRootNode);
   } catch (e) {
     if (e instanceof SourceCodeError) {
@@ -237,7 +238,7 @@ export function generate_WAT_AST(
   moduleRepository: ModuleRepository,
 ) {
   const { cAstRoot } = parse(cSourceCode, moduleRepository);
-  const { astRootNode } = process(cAstRoot, moduleRepository);
+  const { astRootNode } = process(cAstRoot, moduleRepository, new MemoryManager());
   //checkForErrors(cSourceCode, CAst, Object.keys(wasmModuleImports)); // use semantic analyzer to check for semantic errors
   const wasmAst = translate(astRootNode, moduleRepository);
   return toJson(wasmAst);
