@@ -2,7 +2,8 @@ import { ScalarCDataType } from "../common/types";
 import { MemoryAddressEntry } from "../processor/memoryAddressMap";
 import { MemoryManager } from "../processor/memoryManager";
 import { Memory } from "./memory";
-import { ArrayDataType } from "../parser/c-ast/dataTypes";
+import { ArrayDataType, DataType } from "../parser/c-ast/dataTypes";
+import { getDataTypeSize } from "../processor/dataTypeUtil";
 
 export class StackFrame {
   public functionName: string;
@@ -25,31 +26,31 @@ export class StackFrame {
     this.stackPointer = stackPointer;
     this.sizeOfReturn = sizeOfReturn;
     this.memory = memory;
-
+    
     const addressMap = memoryManager.getAddressMap();
     const map = addressMap.getAddressMap();
-
+    
     map.forEach((entry, name) => {
       const parts = name.split("::");
       if (parts.length < 2) {
         return;
       }
-
+      
       const scope = parts[0];
       const varName = parts[1];
-
+      
       const shouldInclude =
-        (functionName === "global" && entry.isGlobal) ||
+      (functionName === "global" && entry.isGlobal) ||
         (functionName === scope && !entry.isGlobal);
 
-      if (!shouldInclude) {
-        return;
-      }
-
-      const absoluteAddress = entry.isGlobal
+        if (!shouldInclude) {
+          return;
+        }
+        
+        const absoluteAddress = entry.isGlobal
         ? entry.offset
         : entry.offset + basePointer;
-
+        
       if (entry.isArray) {
         this.variablesMap.set(varName, {
           ...entry,
@@ -58,13 +59,13 @@ export class StackFrame {
         });
       } else {
         let targetDataType: ScalarCDataType = "signed int";
-
+        
         if (entry.dataType.type === "primary") {
           targetDataType = entry.dataType.primaryDataType;
         } else if (entry.dataType.type === "pointer") {
           targetDataType = "signed int";
         }
-
+        
         const value = memory.load(
           {
             type: "MemoryAddress",
@@ -73,14 +74,14 @@ export class StackFrame {
           },
           targetDataType
         );
-
+        
         let targetValue = 0;
         if (value.type === "FunctionTableIndex") {
           targetValue = Number(value.index.value);
         } else {
           targetValue = Number(value.value);
         }
-
+        
         this.variablesMap.set(varName, {
           ...entry,
           absoluteAddress,
@@ -90,11 +91,32 @@ export class StackFrame {
     });
   }
 
+  public getTypeSize(dataType: DataType) {
+    return getDataTypeSize(dataType);
+  }
+
+  public readPrimitiveValue(address: bigint, dataType: ScalarCDataType): string {
+    const value = this.memory.load(
+      {
+      type: "MemoryAddress",
+      value: address,
+      hexValue: address.toString(16),
+      },
+      dataType
+    );
+
+    if (value.type === "FunctionTableIndex") {
+      return String(value.index.value);
+    }
+
+    return String(value.value);
+  }
+  
   /**
    * Get array elements from memory
    * @param varName - The name of the array variable
    * @returns Array of values or null if variable is not an array
-   */
+  */
   public getArrayElements(varName: string): number[] | null {
     const entry = this.variablesMap.get(varName);
 
