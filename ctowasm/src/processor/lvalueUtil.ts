@@ -16,6 +16,7 @@ import {
   stringifyDataType,
 } from "~src/processor/dataTypeUtil";
 import { getDataTypeOfExpression } from "~src/processor/util";
+import { MemoryManager } from "./memoryManager";
 
 function isAllowableLValueType(dataType: DataType, specialCase = false) {
   return (
@@ -93,6 +94,7 @@ export function isStructModifiableDataType(dataType: StructDataType) {
 export function getAssignmentNodes(
   assignmentNode: Assignment,
   symbolTable: SymbolTable,
+  memoryManager: MemoryManager
 ): {
   memoryStoreStatements: MemoryStore[];
   memoryLoadExpressions: MemoryLoad[];
@@ -102,11 +104,12 @@ export function getAssignmentNodes(
   const assignedMemoryLoadExprs = processExpression(
     assignmentNode.lvalue,
     symbolTable,
+    memoryManager
   );
   const lvalueDataType = getDataTypeOfExpression({
     expression: assignedMemoryLoadExprs,
   });
-  const assignee = processExpression(assignmentNode.expr, symbolTable);
+  const assignee = processExpression(assignmentNode.expr, symbolTable, memoryManager);
   const assigneeDataType = getDataTypeOfExpression({
     expression: assignee,
     convertArrayToPointer: true,

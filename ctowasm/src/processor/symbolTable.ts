@@ -1,4 +1,4 @@
-import { memoryManager } from "~src/processor/memoryManager";
+import { MemoryManager } from "~src/processor/memoryManager";
 import { ENUM_DATA_TYPE } from "~src/common/constants";
 import { DataType, FunctionDataType } from "../parser/c-ast/dataTypes";
 import { ProcessingError, toJson } from "~src/errors";
@@ -121,7 +121,7 @@ export class SymbolTable {
     return funcName in this.externalFunctions;
   }
 
-  addEntry(declaration: VariableDeclaration): SymbolEntry {
+  addEntry(declaration: VariableDeclaration, memoryManager: MemoryManager): SymbolEntry {
     if (declaration.dataType.type === "function") {
       return this.addFunctionEntry(declaration.name, declaration.dataType);
     } else {
@@ -141,6 +141,7 @@ export class SymbolTable {
         declaration.name,
         declaration.dataType,
         declaration.storageClass,
+        memoryManager,
       );
     }
   }
@@ -180,6 +181,7 @@ export class SymbolTable {
     name: string,
     dataType: DataType,
     storageClass: "auto" | "static",
+    memoryManager: MemoryManager,
   ): VariableSymbolEntry {
     if (name in this.symbols) {
       // given variable already exists in given scope
@@ -335,12 +337,12 @@ export class SymbolTable {
     this.functionTable[this.getFunctionIndex(functionName)].isDefined = true;
   }
 
-  enterFunctionScope(functionName: string): void {
+  enterFunctionScope(functionName: string, memoryManager: MemoryManager): void {
     this.currentFunctionName = functionName;
     memoryManager.enterScope(functionName);
   }
 
-  exitFunctionScope(): void {
+  exitFunctionScope(memoryManager: MemoryManager): void {
     this.currentFunctionName = "";
     memoryManager.exitScope();
   }

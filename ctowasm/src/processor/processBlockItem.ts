@@ -27,6 +27,7 @@ import { SwitchStatementCaseP } from "~src/processor/c-ast/statement/selectionSt
 import evaluateCompileTimeExpression from "~src/processor/evaluateCompileTimeExpression";
 import { addWarning } from "~src/processor/warningUtil";
 import { PrimaryDataType } from "~src/parser/c-ast/dataTypes";
+import { MemoryManager } from "./memoryManager";
 
 // some auxillary information used during processing
 let auxInfo = {
@@ -45,10 +46,11 @@ function processLoopBody(
   bodyStaement: BlockItem,
   symbolTable: SymbolTable,
   enclosingFunc: FunctionDefinitionP,
+  memoryManager: MemoryManager,
 ) {
   const originalInLoop = auxInfo.inLoop;
   auxInfo.inLoop = true;
-  const body = processBlockItem(bodyStaement, symbolTable, enclosingFunc);
+  const body = processBlockItem(bodyStaement, symbolTable, enclosingFunc, memoryManager);
   auxInfo.inLoop = originalInLoop;
   return body;
 }
@@ -65,13 +67,14 @@ export default function processBlockItem(
   node: BlockItem,
   symbolTable: SymbolTable,
   enclosingFunc: FunctionDefinitionP,
+  memoryManager: MemoryManager
 ): StatementP[] {
   try {
     if (node.type === "Block") {
       const blockSymbolTable = new SymbolTable(symbolTable);
       const statements: StatementP[] = [];
       node.statements.forEach((child) => {
-        const result = processBlockItem(child, blockSymbolTable, enclosingFunc);
+        const result = processBlockItem(child, blockSymbolTable, enclosingFunc, memoryManager);
         if (result === null) {
           return;
         } else if (Array.isArray(result)) {
@@ -95,6 +98,7 @@ export default function processBlockItem(
               declaration,
               forLoopSymbolTable,
               enclosingFunc,
+              memoryManager
             ),
           );
         }
@@ -103,6 +107,7 @@ export default function processBlockItem(
           node.clause.value,
           forLoopSymbolTable,
           enclosingFunc,
+          memoryManager
         );
       } else {
         clause = [];
@@ -113,13 +118,13 @@ export default function processBlockItem(
         clause,
         condition:
           node.condition !== null
-            ? processCondition(node.condition, forLoopSymbolTable)
+            ? processCondition(node.condition, forLoopSymbolTable, memoryManager)
             : null,
         update:
           node.update !== null
-            ? processBlockItem(node.update, forLoopSymbolTable, enclosingFunc)
+            ? processBlockItem(node.update, forLoopSymbolTable, enclosingFunc, memoryManager)
             : [],
-        body: processLoopBody(node.body, forLoopSymbolTable, enclosingFunc),
+        body: processLoopBody(node.body, forLoopSymbolTable, enclosingFunc, memoryManager),
         position: node.position,
       };
 
@@ -128,8 +133,8 @@ export default function processBlockItem(
       return [
         {
           type: node.type,
-          condition: processCondition(node.condition, symbolTable),
-          body: processLoopBody(node.body, symbolTable, enclosingFunc), // processing a block always gives array of statements
+          condition: processCondition(node.condition, symbolTable, memoryManager),
+          body: processLoopBody(node.body, symbolTable, enclosingFunc, memoryManager), // processing a block always gives array of statements
           position: node.position,
         },
       ];
@@ -153,19 +158,20 @@ export default function processBlockItem(
 
       // there is an expression to return, break up the return into series of memory stores of the expression
       // in the return memory object locations
-      return processFunctionReturnStatement(node.value, symbolTable);
+      return processFunctionReturnStatement(node.value, symbolTable, memoryManager);
     } else if (node.type === "SelectionStatement") {
       return [
         {
           type: "SelectionStatement",
-          condition: processCondition(node.condition, symbolTable),
+          condition: processCondition(node.condition, symbolTable, memoryManager),
           ifStatements: processBlockItem(
             node.ifStatement,
             symbolTable,
             enclosingFunc,
+            memoryManager
           ),
           elseStatements: node.elseStatement
-            ? processBlockItem(node.elseStatement, symbolTable, enclosingFunc)
+            ? processBlockItem(node.elseStatement, symbolTable, enclosingFunc, memoryManager)
             : null,
           position: node.position,
         },
@@ -198,6 +204,7 @@ export default function processBlockItem(
       const processedTargetExpression = processExpression(
         node.targetExpression,
         symbolTable,
+        memoryManager
       );
       const dataTypeOfTargetExpression = getDataTypeOfExpression({
         expression: processedTargetExpression,
@@ -212,6 +219,7 @@ export default function processBlockItem(
           node.targetExpression,
           symbolTable,
           enclosingFunc,
+          memoryManager,
         );
       }
 
@@ -223,6 +231,7 @@ export default function processBlockItem(
           expression: processExpression(
             switchStatementCase.conditionMatch,
             symbolTable,
+            memoryManager,
             enclosingFunc,
           ),
         });
@@ -238,7 +247,7 @@ export default function processBlockItem(
         const processedStatements: StatementP[] = [];
         for (const statement of switchStatementCase.statements) {
           processedStatements.push(
-            ...processBlockItem(statement, symbolTable, enclosingFunc),
+            ...processBlockItem(statement, symbolTable, enclosingFunc, memoryManager),
           );
         }
         // the conditon of each switch case is adjusted to be a relational expression: targetExpression == case value
@@ -266,7 +275,7 @@ export default function processBlockItem(
       const processedDefaultStatements: StatementP[] = [];
       for (const defaultStatement of node.defaultStatements) {
         processedDefaultStatements.push(
-          ...processBlockItem(defaultStatement, symbolTable, enclosingFunc),
+          ...processBlockItem(defaultStatement, symbolTable, enclosingFunc, memoryManager),
         );
       }
       auxInfo.inSwitch = originalInSwitch;
@@ -280,11 +289,11 @@ export default function processBlockItem(
         },
       ];
     } else if (node.type === "Assignment") {
-      return getAssignmentNodes(node, symbolTable).memoryStoreStatements;
+      return getAssignmentNodes(node, symbolTable, memoryManager).memoryStoreStatements;
     } else if (node.type === "FunctionCall") {
       // in this context, the return (if any) of the functionCall is ignored, as it is used as a statement
       return [
-        convertFunctionCallToFunctionCallP(node, symbolTable).functionCallP,
+        convertFunctionCallToFunctionCallP(node, symbolTable, memoryManager).functionCallP,
       ];
     } else if (
       node.type === "PrefixExpression" ||
@@ -292,13 +301,13 @@ export default function processBlockItem(
     ) {
       if (node.operator === "++" || node.operator === "--") {
         // only increment and decrement expressions become statements
-        return getArithmeticPrePostfixExpressionNodes(node, symbolTable)
+        return getArithmeticPrePostfixExpressionNodes(node, symbolTable, memoryManager)
           .storeNodes;
       } else {
         // NOTE: commented out to disable removal of "redundant" statements
         // processExpression(node, symbolTable, enclosingFunc);
         // return [];
-        const processed = processExpression(node, symbolTable, enclosingFunc);
+        const processed = processExpression(node, symbolTable, memoryManager, enclosingFunc);
 
         return [
           {
@@ -312,26 +321,28 @@ export default function processBlockItem(
       const processedExpressions: StatementP[] = [];
       node.expressions.forEach((e) => {
         processedExpressions.push(
-          ...processBlockItem(e, symbolTable, enclosingFunc),
+          ...processBlockItem(e, symbolTable, enclosingFunc, memoryManager),
         );
       });
       return processedExpressions;
     } else if (node.type === "ConditionalExpression") {
-      processExpression(node, symbolTable, enclosingFunc);
+      processExpression(node, symbolTable, memoryManager, enclosingFunc);
       // break this conditional into a simple if else expression (expressions inside condtional may have side effects)
       return [
         {
           type: "SelectionStatement",
-          condition: processCondition(node.condition, symbolTable),
+          condition: processCondition(node.condition, symbolTable, memoryManager),
           ifStatements: processBlockItem(
             node.trueExpression,
             symbolTable,
             enclosingFunc,
+            memoryManager
           ),
           elseStatements: processBlockItem(
             node.falseExpression,
             symbolTable,
             enclosingFunc,
+            memoryManager
           ),
           position: node.position,
         },
@@ -353,7 +364,7 @@ export default function processBlockItem(
       // all these expression statements can be safely ignored as they have no side effects
       // return [];
 
-      const processed = processExpression(node, symbolTable, enclosingFunc);
+      const processed = processExpression(node, symbolTable, memoryManager, enclosingFunc);
 
       return [
         {
@@ -366,7 +377,7 @@ export default function processBlockItem(
       addWarning("statement with no effect", node.position);
       return [];
     } else if (node.type === "Declaration" || node.type === "EnumDeclaration") {
-      return processLocalDeclaration(node, symbolTable, enclosingFunc);
+      return processLocalDeclaration(node, symbolTable, enclosingFunc, memoryManager);
     } else {
       throw new ProcessingError(`unhandled C AST node: ${toJson(node)}`);
     }

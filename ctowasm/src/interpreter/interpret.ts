@@ -10,6 +10,7 @@ import ModuleRepository, {
 import { defaultPosition } from "./utils/constantsUtils";
 import { StackFrame } from "./stackFrame";
 import { InstructionType, StackFrameTearDownInstruction } from "./controlItems";
+import { MemoryManager } from "../processor/memoryManager";
 
 export interface CContext {
   astRoot: CAstRootP;
@@ -26,18 +27,21 @@ export class Interpreter {
   private readonly includedModules: ModuleName[];
   private readonly moduleConfig: ModulesGlobalConfig;
   private readonly sourceCode: string;
+  private readonly memoryManager: MemoryManager;
 
   constructor(
     astRootNode: CAstRootP,
     includedModules: ModuleName[],
     moduleConfig: ModulesGlobalConfig,
-    sourceCode: string
+    sourceCode: string,
+    memoryManager: MemoryManager
   ) {
     this.astRootNode = astRootNode;
     this.runtimeStack = []; // CURRENTLY NOT USED WITH HOW INTERPRETER IS SETUP
     this.includedModules = includedModules;
     this.moduleConfig = moduleConfig;
     this.sourceCode = sourceCode;
+    this.memoryManager = memoryManager;
   }
 
   async interpretTillStep(targetStep: number): Promise<CContext> {
@@ -114,26 +118,25 @@ export class Interpreter {
       }
     }
 
-    
     // setup stack frames for visualizer
     const tearDowns: StackFrameTearDownInstruction[] = currentRuntime
     .getControl()
     .getTearDowns()
     .reverse();
-    
+
     // TODO: Do This in a smarter way
     let lastBasePointer: number =
     currentRuntime.getPointers().basePointer.value;
-    let lastStackPointer: number = 
+    let lastStackPointer: number =
     currentRuntime.getPointers().stackPointer.value;
-    
+
     const stackFrames: StackFrame[] = [];
-    
+
     for (let i = 0; i < tearDowns.length; i++) {
       if (tearDowns[i].type !== InstructionType.STACKFRAMETEARDOWNINSTRUCTION) {
         throw new Error("Expected a StackFrameTearDown Instruction");
       }
-      
+
       stackFrames.push(
         new StackFrame(
           tearDowns[i].functionName,
@@ -141,12 +144,24 @@ export class Interpreter {
           lastStackPointer,
           tearDowns[i].sizeOfReturn,
           currentRuntime.getMemory(),
+          this.memoryManager
         )
       );
-      
+
       lastBasePointer = tearDowns[i].basePointer;
       lastStackPointer = tearDowns[i].stackPointer;
     }
+
+    stackFrames.push(
+      new StackFrame(
+        "global",
+        0,
+        0,
+        0,
+        currentRuntime.getMemory(),
+        this.memoryManager
+      )
+    )
 
     return {
       astRoot: this.astRootNode,

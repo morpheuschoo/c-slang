@@ -27,11 +27,12 @@ import {
 } from "~src/processor/dataTypeUtil";
 import { DataType, FunctionDataType } from "~src/parser/c-ast/dataTypes";
 import { ExpressionWrapperP } from "~src/processor/c-ast/expression/expressions";
-import { memoryManager } from "~src/processor/memoryManager";
+import { MemoryManager } from "~src/processor/memoryManager";
 
 export default function processFunctionDefinition(
   node: FunctionDefinition,
   symbolTable: SymbolTable,
+  memoryManager: MemoryManager,
 ): FunctionDefinitionP {
   symbolTable.addFunctionEntry(node.name, node.dataType);
   symbolTable.setFunctionIsDefinedFlag(node.name);
@@ -49,6 +50,7 @@ export default function processFunctionDefinition(
       node.parameterNames[i],
       node.dataType.parameters[i],
       "auto", // all function parameters must have "auto" storage class
+      memoryManager,
     );
   }
 
@@ -66,6 +68,7 @@ export default function processFunctionDefinition(
     node.body,
     funcSymbolTable,
     functionDefinitionNode,
+    memoryManager,
   );
   functionDefinitionNode.body = body; // body is a Block, an array of StatementP will be returned
 
@@ -81,9 +84,10 @@ export default function processFunctionDefinition(
 export function processFunctionReturnStatement(
   expr: Expression,
   symbolTable: SymbolTable,
+  memoryManager: MemoryManager,
 ): StatementP[] {
   const statements: StatementP[] = [];
-  const processedExpr = processExpression(expr, symbolTable);
+  const processedExpr = processExpression(expr, symbolTable, memoryManager);
 
   // TODO: data type check
   // if (
@@ -131,6 +135,7 @@ export function processFunctionReturnStatement(
 export function convertFunctionCallToFunctionCallP(
   node: FunctionCall,
   symbolTable: SymbolTable,
+  memoryManager: MemoryManager,
 ): { functionCallP: FunctionCallP; returnType: DataType } {
   // direct call of a function
   if (
@@ -154,6 +159,7 @@ export function convertFunctionCallToFunctionCallP(
           node.args,
           symbolEntry.dataType,
           symbolTable,
+          memoryManager,
         ),
         position: node.position,
       },
@@ -162,7 +168,7 @@ export function convertFunctionCallToFunctionCallP(
   }
 
   // indirect call of function from an expression that is a function pointer
-  const processedCalledExpr = processExpression(node.expr, symbolTable);
+  const processedCalledExpr = processExpression(node.expr, symbolTable, memoryManager);
   const dataTypeOfCalledExpr = getDataTypeOfExpression({
     expression: processedCalledExpr,
     convertArrayToPointer: true,
@@ -183,7 +189,7 @@ export function convertFunctionCallToFunctionCallP(
       },
       functionDetails:
         convertFunctionDataTypeToFunctionDetails(functionDataType),
-      args: processFunctionCallArgs(node.args, functionDataType, symbolTable),
+      args: processFunctionCallArgs(node.args, functionDataType, symbolTable, memoryManager),
       position: processedCalledExpr.exprs[0].position,
     },
   };
@@ -193,11 +199,12 @@ function processFunctionCallArgs(
   args: Expression[],
   fnDataType: FunctionDataType,
   symbolTable: SymbolTable,
+  memoryManager: MemoryManager,
 ): ExpressionP[] {
   const argExpressions = [];
   const argExpressionWrappers: ExpressionWrapperP[] = [];
   for (const arg of args) {
-    const expr = processExpression(arg, symbolTable);
+    const expr = processExpression(arg, symbolTable, memoryManager);
     argExpressionWrappers.push(expr);
     // each inidividual expression is concatenated in reverse order, as stack grows from high to low,
     // whereas indiviudal primary data types within larger aggergates go from low to high (reverse direction)

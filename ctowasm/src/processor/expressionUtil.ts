@@ -32,6 +32,7 @@ import { MemoryLoad, MemoryStore } from "~src/processor/c-ast/memory";
 import { getDataTypeOfExpression } from "~src/processor/util";
 import { checkPrePostfixTypeConstraint } from "~src/processor/constraintChecks";
 import { PTRDIFF_T } from "~src/common/constants";
+import { MemoryManager } from "./memoryManager";
 
 function isRelationalOperator(op: BinaryOperator) {
   return (
@@ -209,9 +210,10 @@ export function determineResultDataTypeOfBinaryExpression(
 export function getArithmeticPrePostfixExpressionNodes(
   expr: PrefixExpression | PostfixExpression,
   symbolTable: SymbolTable,
+  memoryManager: MemoryManager,
 ): { storeNodes: MemoryStore[]; loadNode: MemoryLoad; dataType: DataType } {
   const binaryOperator = expr.operator === "++" ? "+" : "-";
-  const processedExpr = processExpression(expr.expr, symbolTable);
+  const processedExpr = processExpression(expr.expr, symbolTable, memoryManager);
   checkPrePostfixTypeConstraint(expr, processedExpr, symbolTable);
   const dataType = getDataTypeOfExpression({
     expression: processedExpr,
@@ -277,13 +279,14 @@ export function getArithmeticPrePostfixExpressionNodes(
 export function processPrefixExpression(
   prefixExpression: PrefixExpression,
   symbolTable: SymbolTable,
+  memoryManager: MemoryManager
 ): ExpressionWrapperP {
   if (
     prefixExpression.operator === "++" ||
     prefixExpression.operator === "--"
   ) {
     const { loadNode, storeNodes, dataType } =
-      getArithmeticPrePostfixExpressionNodes(prefixExpression, symbolTable);
+      getArithmeticPrePostfixExpressionNodes(prefixExpression, symbolTable, memoryManager);
     return {
       originalDataType: dataType,
       exprs: [
@@ -300,6 +303,7 @@ export function processPrefixExpression(
     const processedExpression = processExpression(
       prefixExpression.expr,
       symbolTable,
+      memoryManager
     );
     const dataType = getDataTypeOfExpression({
       expression: processedExpression,
@@ -369,9 +373,10 @@ export function processPrefixExpression(
 export function processPostfixExpression(
   postfixExpression: PostfixExpression,
   symbolTable: SymbolTable,
+  memoryManager: MemoryManager,
 ): ExpressionWrapperP {
   const { loadNode, storeNodes, dataType } =
-    getArithmeticPrePostfixExpressionNodes(postfixExpression, symbolTable);
+    getArithmeticPrePostfixExpressionNodes(postfixExpression, symbolTable, memoryManager);
   return {
     originalDataType: dataType,
     exprs: [
