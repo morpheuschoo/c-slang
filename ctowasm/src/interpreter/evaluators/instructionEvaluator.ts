@@ -249,12 +249,17 @@ export const InstructionEvaluator: {
     }
     parameters.reverse();
 
-    if (functionAddress.type !== "FunctionTableIndex") {
+    let functionAddressIntValue: bigint;
+    if (functionAddress.type === "FunctionTableIndex") {
+      functionAddressIntValue = functionAddress.index.value;
+    } else if (functionAddress.type === "IntegerConstant" || functionAddress.type === "FloatConstant" || functionAddress.type === "MemoryAddress") {
+      functionAddressIntValue = BigInt(functionAddress.value);
+    } else {
       throw new Error("Wrong function pointer type in Call instruction");
     }
 
     const calledFunction =
-      Runtime.astRootP.functionTable[Number(functionAddress.index.value)];
+      Runtime.astRootP.functionTable[Number(functionAddressIntValue)];
 
     if (
       Runtime.astRootP.functions.find(

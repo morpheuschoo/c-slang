@@ -120,15 +120,15 @@ export class Interpreter {
 
     // setup stack frames for visualizer
     const tearDowns: StackFrameTearDownInstruction[] = currentRuntime
-    .getControl()
-    .getTearDowns()
-    .reverse();
+      .getControl()
+      .getTearDowns()
+      .reverse();
 
     // TODO: Do This in a smarter way
     let lastBasePointer: number =
-    currentRuntime.getPointers().basePointer.value;
+      currentRuntime.getPointers().basePointer.value;
     let lastStackPointer: number =
-    currentRuntime.getPointers().stackPointer.value;
+      currentRuntime.getPointers().stackPointer.value;
 
     const stackFrames: StackFrame[] = [];
 
@@ -186,8 +186,6 @@ export class Interpreter {
     }
 
     // call main
-    console.log("Starting interpretation...");
-    console.log(this.astRootNode.position);
     const initialRuntime = new Runtime(
       new Control([
         {
@@ -233,11 +231,8 @@ export class Interpreter {
 
     let currentRuntime = initialRuntime;
 
-    // console.log(currentRuntime.toString());
-
     while (!currentRuntime.hasCompleted()) {
       currentRuntime = currentRuntime.next();
-      // console.log(currentRuntime.toString());
       this.runtimeStack.push(currentRuntime);
     }
   }

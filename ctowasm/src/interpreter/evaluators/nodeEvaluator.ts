@@ -155,11 +155,11 @@ export const NodeEvaluator: {
     const condition: ExpressionP =
       node.condition === null
         ? {
-            type: "IntegerConstant",
-            value: 1n,
-            dataType: "signed int",
-            position: defaultPosition,
-          }
+          type: "IntegerConstant",
+          value: 1n,
+          dataType: "signed int",
+          position: defaultPosition,
+        }
         : node.condition;
 
     const forLoopInstr = forLoopInstruction(
@@ -398,27 +398,27 @@ export const NodeEvaluator: {
 
       return newRuntime;
     } else {
-      throw new Error("TODO: Implement indirectly called function");
-      // const calledFunction = node.calledFunction;
-      // const funcIndex: ExpressionP = calledFunction.functionAddress;
+      const calledFunction = node.calledFunction;
+      const funcIndex: ExpressionP = calledFunction.functionAddress;
 
-      // const newRuntime = runtime.push([
-      //   ...node.args,
-      //   funcIndex,
-      //   functionIndexWrapper(),
-      //   callInstruction(
-      //     node.calledFunction,
-      //     node.functionDetails,
-      //     calledFunction.functionAddress.position
-      //   ),
-      //   stackFrameTearDownInstruction(
-      //     pointers.basePointer.value,
-      //     pointers.stackPointer.value,
-      //     calledFunction.functionAddress.position
-      //   ),
-      // ]);
+      const newRuntime = runtime.push([
+        ...node.args,
+        funcIndex,
+        callInstruction(
+          node.calledFunction,
+          node.functionDetails,
+          calledFunction.functionAddress.position
+        ),
+        stackFrameTearDownInstruction(
+          "Indirectly called function",
+          pointers.basePointer.value,
+          pointers.stackPointer.value,
+          0, // unknown size of return
+          calledFunction.functionAddress.position
+        ),
+      ]);
 
-      // return newRuntime;
+      return newRuntime;
     }
   },
 

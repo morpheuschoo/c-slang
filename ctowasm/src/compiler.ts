@@ -16,7 +16,7 @@ import ModuleRepository, {
   ModuleName,
   ModulesGlobalConfig,
 } from "~src/modules";
-import { evaluateTillStep } from "~src/interpreter/index";
+import { evaluateTillStep, interpret } from "~src/interpreter/index";
 import { CContext } from "~src/interpreter/interpret";
 import { MemoryManager } from "./processor/memoryManager";
 
@@ -95,6 +95,27 @@ export async function compile(
     }
     throw e;
   }
+}
+
+export async function original_interpret_C_AST(
+  sourceCode: string,
+  moduleRepository: ModuleRepository,
+  moduleConfig: ModulesGlobalConfig
+) {
+  const memoryManager = new MemoryManager();
+  const { cAstRoot, warnings } = parse(sourceCode, moduleRepository);
+  const {
+    astRootNode,
+    includedModules,
+    warnings: processorWarnings,
+  } = process(cAstRoot, moduleRepository, memoryManager);
+  warnings.push(
+    ...processorWarnings.map((w) =>
+      generateCompilationWarningMessage(w.message, sourceCode, w.position),
+    ),
+  );
+
+  interpret(astRootNode, includedModules, moduleConfig, sourceCode);
 }
 
 export async function evaluate(
@@ -244,12 +265,12 @@ export function generate_WAT_AST(
   return toJson(wasmAst);
 }
 
-// export function interpret_C_AST(
-//   cSourceCode: string,
-//   moduleRepository: ModuleRepository,
-//   moduleConfig: ModulesGlobalConfig,
-// ) {
-//   const { cAstRoot } = parse(cSourceCode, moduleRepository);
-//   const { astRootNode } = process(cAstRoot, moduleRepository);
-//   interpret(astRootNode, cAstRoot.includedModules, moduleConfig, cSourceCode);
-// }
+export function interpret_C_AST(
+  cSourceCode: string,
+  moduleRepository: ModuleRepository,
+  moduleConfig: ModulesGlobalConfig,
+) {
+  const { cAstRoot } = parse(cSourceCode, moduleRepository);
+  const { astRootNode } = process(cAstRoot, moduleRepository, new MemoryManager());
+  interpret(astRootNode, cAstRoot.includedModules, moduleConfig, cSourceCode);
+}

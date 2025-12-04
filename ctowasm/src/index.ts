@@ -12,6 +12,7 @@ import {
   WatCompilationResult,
   CompilationResult,
   EvaluationResult,
+  original_interpret_C_AST,
 } from "./compiler";
 import { calculateNumberOfPagesNeededForBytes } from "~src/common/utils";
 import { WASM_PAGE_SIZE } from "~src/translator/memoryUtil";
@@ -30,16 +31,16 @@ export function generate_WAT_AST(program: string) {
   return originalGenerate_WAT_AST(program, defaultModuleRepository);
 }
 
-// export function interpret_C_AST(
-//   program: string,
-//   modulesConfig: ModulesGlobalConfig,
-// ) {
-//   return original_interpter_C_AST(
-//     program,
-//     defaultModuleRepository,
-//     modulesConfig,
-//   );
-// }
+export function interpret_C_AST(
+  program: string,
+  modulesConfig: ModulesGlobalConfig,
+) {
+  return original_interpret_C_AST(
+    program,
+    defaultModuleRepository,
+    modulesConfig,
+  );
+}
 
 export async function evaluate(
   program: string,
